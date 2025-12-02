@@ -7,12 +7,14 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     graphviz \
     && apt-get dist-clean
 
-# Install the headless awusb manager
-# deb embeded in this repo because their website is not always up
+# Install the headless awusb manager.
+# The .deb is embeded in this repo because their website is not always up.
+# https://hub.digi.com/support/products/infrastructure-management/digi-anywhereusb-2-plus/
 COPY --link awusbmanager-headless_1.2_amd64.deb /
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ./awusbmanager-headless_1.2_amd64.deb \
     && rm -rf /var/lib/apt/lists/* \
+
 
 # The build stage installs the context into the venv
 FROM developer AS build
@@ -29,7 +31,6 @@ ENV UV_PYTHON_INSTALL_DIR=/python
 # Sync the project without its dev dependencies
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-editable --no-dev
-
 
 # The runtime stage copies the built venv into a runtime container
 FROM ubuntu:noble AS runtime
