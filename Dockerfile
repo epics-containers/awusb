@@ -40,6 +40,9 @@ RUN sudo apt-get update && sudo apt-get install -y --no-install-recommends \
     ./awusbmanager-headless_1.2_amd64.deb \
     && sudo rm -rf /var/lib/apt/lists/*
 
+# remove sudo rights again
+RUN sudo sed -i '/^ubuntu ALL=(ALL) NOPASSWD: ALL$/d' /etc/sudoers
+
 # Copy the python installation from the build stage
 COPY --from=build /python /python
 
@@ -47,4 +50,7 @@ COPY --from=build /python /python
 COPY --from=build /app/.venv /app/.venv
 ENV PATH=/app/.venv/bin:$PATH
 
+# use root for local rootless containers in podman
+# this should be run as uid 1000 in cluster
+USER root
 ENTRYPOINT ["bash"]
