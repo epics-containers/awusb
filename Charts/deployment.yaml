@@ -35,8 +35,8 @@ spec:
           securityContext:
             allowPrivilegeEscalation: false
             privileged: false
-            # runAsUser: 1000
-            # runAsGroup: 1000
+            runAsUser: 37149
+            runAsGroup: 37149
           tty: true
           volumeMounts:
             - mountPath: /tmp/awusb_ipc
