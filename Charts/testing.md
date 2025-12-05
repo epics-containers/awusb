@@ -13,7 +13,7 @@ Here is the theory of what needs to be done to test anyWhereUSB in cluster.
 awusbmanager-headless -l /tmp/log
 awusbmanager-headless set clientid,new_unused_name
 # OK
-awusbmanager-headless known hub add,127.0.0.1
+awusbmanager-headless known hub add,10.71.1.32
 # OK
 awusbmanager-headless list
 ```
@@ -23,7 +23,7 @@ you should see:
  AnywhereUSB Manager version 3.1.38.1 Client ID: new_unused_name
 Below are the available devices:
 
- AW02-050314 (127.0.0.1:18574)
+ AW02-050314 (10.71.1.32:18574)
     Group 1 (AW02-050314.1)
         Dell KB216 Wired Keyboard (AW02-050314.1101)
     Group 2 (AW02-050314.2)
