@@ -21,7 +21,7 @@ def main(args: Sequence[str] | None = None) -> None:
     parser.parse_args(args)
 
     get_devices_list = get_devices()
-    print("Local USB devices:")
+    print("Local shareable USB devices:")
     for device in get_devices_list:
         print(f"- {device}\n  {device.details}")
 

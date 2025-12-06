@@ -14,15 +14,18 @@ class UsbDevice:
     details: dict[str, str]
 
     def __repr__(self):
-        return (
-            f"UsbDevice(bus_id={self.bus_id!r}, "
-            f"vendor={self.vendor!r}, product={self.product!r})"
-        )
+        return f"ID={self.vendor}:{self.product} BUS_ID={self.bus_id}"
 
 
 def _filter_on_port_numbers(
     device: usb.core.Device, port_numbers: tuple[int, ...]
 ) -> bool:
+    """
+    Custom filter function to match USB devices based on port numbers.
+
+    e.g. When the bus ID is "1-2.3.4",
+        the bus is 1 and the port numbers are (2, 3, 4).
+    """
     device_ports = getattr(device, "port_numbers", ())
     return device_ports == port_numbers
 
@@ -94,4 +97,5 @@ def get_devices() -> list[UsbDevice]:
         busid, vendor, product = match.groups()
         details = get_udev_details(vendor, product, busid)
         devices.append(UsbDevice(busid, vendor, product, details))
+        assert devices[-1].bus_id == busid
     return devices
