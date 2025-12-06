@@ -3,16 +3,9 @@
 FROM ghcr.io/diamondlightsource/ubuntu-devcontainer:noble AS developer
 
 # Add any system dependencies for the developer/build environment here
-RUN apt-get update -y && apt-get install -y --no-install-recommends \
-    graphviz \
-    && apt-get dist-clean
-
-# Install the headless awusb manager
-# deb embeded in this repo because their website is not always up
-COPY --link awusbmanager-headless_1.2_amd64.deb /
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ./awusbmanager-headless_1.2_amd64.deb \
-    && rm -rf /var/lib/apt/lists/* \
+# RUN apt-get update -y && apt-get install -y --no-install-recommends \
+#     graphviz \
+#     && apt-get dist-clean
 
 # The build stage installs the context into the venv
 FROM developer AS build
