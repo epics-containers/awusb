@@ -202,12 +202,11 @@ def attach_detach_device(
         raise RuntimeError(msg)
 
     if len(matches) > 1 and not args.first:
-        server_list = ", ".join(f"{dev.description} on {srv}" for dev, srv in matches)
+        device_list = "\n".join(f"  {dev} (on {srv})" for dev, srv in matches)
         msg = (
-            f"Multiple devices matched across servers: {server_list}. "
+            f"Multiple devices matched across servers:\n{device_list}\n\n"
             "Use --first to attach the first match."
         )
-        logger.error(msg)
         raise RuntimeError(msg)
 
     device, server = matches[0]
