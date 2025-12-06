@@ -51,12 +51,17 @@ def list(
         "-l",
         help="List local USB devices instead of querying the server",
     ),
+    host: str | None = typer.Option(
+        None, "--host", "-H", help="Server hostname or IP address"
+    ),
 ) -> None:
     """List the available USB devices from the server."""
     if local:
         devices = get_devices()
     else:
-        devices = list_devices()
+        devices = list_devices(
+            server_host=host if host else "localhost", server_port=5000
+        )
 
     for device in devices:
         print(device)
