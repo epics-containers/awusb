@@ -16,7 +16,9 @@ from .utility import run_command
 logger = logging.getLogger(__name__)
 
 
-def send_request(request, server_host="localhost", server_port=5000):
+def send_request(
+    request, server_host="localhost", server_port=5000, raise_on_error=True
+):
     """
     Send a request to the server and return the response.
 
@@ -24,6 +26,8 @@ def send_request(request, server_host="localhost", server_port=5000):
         request: The request object to send
         server_host: Server hostname or IP address
         server_port: Server port number
+        raise_on_error: If True, log errors and raise RuntimeError on error response.
+                       If False, just raise RuntimeError without logging.
 
     Returns:
         The response object from the server
@@ -44,7 +48,8 @@ def send_request(request, server_host="localhost", server_port=5000):
         decoded = response_adapter.validate_json(response)
 
         if isinstance(decoded, ErrorResponse):
-            logger.error(f"Server returned error: {decoded.message}")
+            if raise_on_error:
+                logger.error(f"Server returned error: {decoded.message}")
             raise RuntimeError(f"Server error: {decoded.message}")
 
         logger.debug(f"Request successful: {request.command}")
@@ -145,7 +150,7 @@ def attach_detach_device(
     for server in server_hosts:
         try:
             logger.debug(f"Trying server {server}")
-            response = send_request(args, server, server_port)
+            response = send_request(args, server, server_port, raise_on_error=False)
             matches.append((response.data, server))
             logger.debug(f"Match found on {server}: {response.data.description}")
         except RuntimeError as e:
