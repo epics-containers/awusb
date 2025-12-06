@@ -1,6 +1,5 @@
 """Interface for ``python -m awusb_client``."""
 
-from argparse import ArgumentParser
 from collections.abc import Sequence
 
 import typer
@@ -8,6 +7,7 @@ import typer
 from . import __version__
 from .client import attach_device, list_devices
 from .server import CommandServer
+from .usbdevice import get_devices
 
 __all__ = ["main"]
 
@@ -43,19 +43,24 @@ def server() -> None:
 
 
 @app.command()
-def client(
-    action: str = typer.Argument(..., help="Action to perform: 'list' or 'attach'"),
+def list(
+    local: bool = typer.Option(
+        False,
+        "--local",
+        "-l",
+        help="List local USB devices instead of querying the server",
+    ),
 ) -> None:
-    """Client commands for USB device management."""
-    if action == "list":
-        for device in list_devices():
-            print(device)
-    elif action == "attach":
-        attach_device("hello")
-        print("attach called")
+    """List the available USB devices from the server."""
+    if local:
+        from .usbdevice import get_devices
+
+        devices = get_devices()
     else:
-        typer.echo(f"Unknown action: {action}. Use 'list' or 'attach'.")
-        raise typer.Exit(1)
+        devices = list_devices()
+
+    for device in devices:
+        print(device)
 
 
 def main(args: Sequence[str] | None = None) -> None:

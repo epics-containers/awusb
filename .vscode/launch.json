@@ -8,7 +8,11 @@
             "name": "awusb run",
             "type": "debugpy",
             "request": "launch",
-            "module": "awusb_client"
+            "module": "awusb_client.__main__",
+            "args": [
+                "client",
+                "list"
+            ],
         },
         {
             "name": "Debug Unit Test",

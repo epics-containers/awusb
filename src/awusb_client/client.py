@@ -13,7 +13,7 @@ def list_devices(server_host="localhost", server_port=5000) -> list[UsbDevice]:
         server_port: Server port number
 
     Returns:
-        List of dictionaries containing device informatio
+        List of UsbDevice instances
     """
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.connect((server_host, server_port))
@@ -23,7 +23,7 @@ def list_devices(server_host="localhost", server_port=5000) -> list[UsbDevice]:
 
         response = sock.recv(4096).decode("utf-8")
         decoded = json.loads(response)
-        return [UsbDevice(**device) for device in decoded.get("data", [])]
+        return [UsbDevice.model_validate(device) for device in decoded.get("data", [])]
 
 
 def attach_device(device_id, server_host="localhost", server_port=5000):

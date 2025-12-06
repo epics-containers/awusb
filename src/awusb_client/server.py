@@ -1,7 +1,6 @@
 import json
 import socket
 import threading
-from dataclasses import asdict
 
 from .usbdevice import UsbDevice, get_devices
 
@@ -51,7 +50,7 @@ class CommandServer:
             if command == "list":
                 print(f"List from: {address}")
                 result = self.handle_list()
-                data = [asdict(device) for device in result]
+                data = [device.model_dump() for device in result]
                 response = {"status": "success", "data": data}
                 self._send_response(client_socket, response)
 
