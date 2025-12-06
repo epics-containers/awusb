@@ -1,5 +1,6 @@
 """Interface for ``python -m awusb``."""
 
+import logging
 from collections.abc import Sequence
 
 import typer
@@ -13,6 +14,7 @@ from .usbdevice import UsbDevice, get_devices
 __all__ = ["main"]
 
 app = typer.Typer()
+logger = logging.getLogger(__name__)
 
 
 def version_callback(value: bool) -> None:
@@ -37,8 +39,19 @@ def common_options(
 
 
 @app.command()
-def server() -> None:
+def server(
+    debug: bool = typer.Option(False, "--debug", "-d", help="Enable debug logging"),
+) -> None:
     """Start the USB sharing server."""
+    # Configure logging
+    log_level = logging.DEBUG if debug else logging.INFO
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    logger.info(f"Starting server with log level: {logging.getLevelName(log_level)}")
     server = CommandServer()
     server.start()
 
@@ -54,9 +67,17 @@ def list(
     host: str | None = typer.Option(
         None, "--host", "-H", help="Server hostname or IP address"
     ),
+    debug: bool = typer.Option(False, "--debug", help="Enable debug logging"),
 ) -> None:
     """List the available USB devices from the server."""
+    if debug:
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        )
+
     if local:
+        logger.debug("Listing local USB devices")
         devices = get_devices()
     else:
         devices = list_devices(
@@ -97,8 +118,15 @@ def attach(
     first: bool = typer.Option(
         False, "--first", "-f", help="Attach the first match if multiple found"
     ),
+    debug: bool = typer.Option(False, "--debug", help="Enable debug logging"),
 ) -> None:
     """Attach a USB device from the server."""
+    if debug:
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        )
+
     result = attach_detach(
         False, id=id, bus=bus, desc=desc, first=first, serial=serial, host=host
     )
@@ -123,8 +151,15 @@ def detach(
     first: bool = typer.Option(
         False, "--first", "-f", help="Attach the first match if multiple found"
     ),
+    debug: bool = typer.Option(False, "--debug", help="Enable debug logging"),
 ) -> None:
     """Attach a USB device from the server."""
+    if debug:
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        )
+
     result = attach_detach(
         True, id=id, bus=bus, desc=desc, first=first, serial=serial, host=host
     )
