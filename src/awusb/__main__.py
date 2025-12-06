@@ -87,7 +87,7 @@ def list_command(
         # Single server specified
         logger.debug(f"Listing devices from {host}")
         devices = cast(
-            list[UsbDevice], list_devices(server_hosts=host, server_port=5000)
+            list[UsbDevice], list_devices(server_hosts=host, server_port=5055)
         )
         for device in devices:
             print(device)
@@ -100,7 +100,7 @@ def list_command(
 
         results = cast(
             dict[str, list[UsbDevice]],
-            list_devices(server_hosts=servers, server_port=5000),
+            list_devices(server_hosts=servers, server_port=5055),
         )
         for server, devices in results.items():
             print(f"\n=== {server} ===")
@@ -125,7 +125,7 @@ def attach_detach(detach: bool = False, **kwargs) -> tuple[UsbDevice, str | None
         result = attach_detach_device(
             args=args,
             server_hosts=host,
-            server_port=5000,
+            server_port=5055,
             detach=detach,
         )
         device = cast(UsbDevice, result)
@@ -140,7 +140,7 @@ def attach_detach(detach: bool = False, **kwargs) -> tuple[UsbDevice, str | None
         result = attach_detach_device(
             args=args,
             server_hosts=servers,
-            server_port=5000,
+            server_port=5055,
             detach=detach,
         )
         device, server = cast(tuple[UsbDevice, str], result)

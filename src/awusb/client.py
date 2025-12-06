@@ -23,7 +23,7 @@ DEFAULT_TIMEOUT = 5.0
 def send_request(
     request,
     server_host="localhost",
-    server_port=5000,
+    server_port=5055,
     raise_on_error=True,
     timeout=DEFAULT_TIMEOUT,
 ):
@@ -77,7 +77,7 @@ def send_request(
 
 def list_devices(
     server_hosts: list[str] | str = "localhost",
-    server_port=5000,
+    server_port=5055,
     timeout: float | None = None,
 ) -> dict[str, list[UsbDevice]] | list[UsbDevice]:
     """
@@ -124,7 +124,7 @@ def list_devices(
 def attach_detach_device(
     args: AttachRequest,
     server_hosts: list[str] | str = "localhost",
-    server_port=5000,
+    server_port=5055,
     detach: bool = False,
     timeout: float | None = None,
 ) -> UsbDevice | tuple[UsbDevice, str]:

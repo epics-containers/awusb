@@ -91,7 +91,7 @@ class TestListCommand:
             result = runner.invoke(app, ["list", "--host", "192.168.1.100"])
             assert result.exit_code == 0
             mock_list.assert_called_once_with(
-                server_hosts="192.168.1.100", server_port=5000
+                server_hosts="192.168.1.100", server_port=5055
             )
 
     def test_list_error_handling(self):
