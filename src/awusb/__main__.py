@@ -2,11 +2,13 @@
 
 import logging
 from collections.abc import Sequence
+from typing import cast
 
 import typer
 
 from . import __version__
 from .client import attach_detach_device, list_devices
+from .config import get_servers
 from .models import AttachRequest
 from .server import CommandServer
 from .usbdevice import UsbDevice, get_devices
@@ -56,8 +58,8 @@ def server(
     server.start()
 
 
-@app.command()
-def list(
+@app.command(name="list")
+def list_command(
     local: bool = typer.Option(
         False,
         "--local",
@@ -69,7 +71,7 @@ def list(
     ),
     debug: bool = typer.Option(False, "--debug", help="Enable debug logging"),
 ) -> None:
-    """List the available USB devices from the server."""
+    """List the available USB devices from the server(s)."""
     if debug:
         logging.basicConfig(
             level=logging.DEBUG,
@@ -79,25 +81,70 @@ def list(
     if local:
         logger.debug("Listing local USB devices")
         devices = get_devices()
-    else:
-        devices = list_devices(
-            server_host=host if host else "localhost", server_port=5000
+        for device in devices:
+            print(device)
+    elif host:
+        # Single server specified
+        logger.debug(f"Listing devices from {host}")
+        devices = cast(
+            list[UsbDevice], list_devices(server_hosts=host, server_port=5000)
         )
+        for device in devices:
+            print(device)
+    else:
+        # Query all servers from config
+        servers = get_servers()
+        if not servers:
+            logger.warning("No servers configured, defaulting to localhost")
+            servers = ["localhost"]
 
-    for device in devices:
-        print(device)
+        results = cast(
+            dict[str, list[UsbDevice]],
+            list_devices(server_hosts=servers, server_port=5000),
+        )
+        for server, devices in results.items():
+            print(f"\n=== {server} ===")
+            if devices:
+                for device in devices:
+                    print(device)
+            else:
+                print("No devices or server unavailable")
 
 
-def attach_detach(detach: bool = False, **kwargs) -> UsbDevice:
-    """Attach or detach a USB device from the server."""
+def attach_detach(detach: bool = False, **kwargs) -> tuple[UsbDevice, str | None]:
+    """Attach or detach a USB device from the server.
+
+    Returns:
+        Tuple of (device, server) where server is None if --host was specified
+    """
     args = AttachRequest(detach=detach, **kwargs)
-    result = attach_detach_device(
-        args=args,
-        server_host=kwargs.get("host", "localhost"),
-        server_port=5000,
-        detach=detach,
-    )
-    return result
+    host = kwargs.get("host")
+
+    if host:
+        # Single server specified
+        result = attach_detach_device(
+            args=args,
+            server_hosts=host,
+            server_port=5000,
+            detach=detach,
+        )
+        device = cast(UsbDevice, result)
+        return device, None
+    else:
+        # Scan all servers from config
+        servers = get_servers()
+        if not servers:
+            logger.warning("No servers configured, defaulting to localhost")
+            servers = ["localhost"]
+
+        result = attach_detach_device(
+            args=args,
+            server_hosts=servers,
+            server_port=5000,
+            detach=detach,
+        )
+        device, server = cast(tuple[UsbDevice, str], result)
+        return device, server
 
 
 @app.command()
@@ -127,10 +174,13 @@ def attach(
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         )
 
-    result = attach_detach(
+    result, server = attach_detach(
         False, id=id, bus=bus, desc=desc, first=first, serial=serial, host=host
     )
-    typer.echo(f"Attached to:\n{result}")
+    if server:
+        typer.echo(f"Attached to device on {server}:\n{result}")
+    else:
+        typer.echo(f"Attached to:\n{result}")
 
 
 @app.command()
@@ -160,10 +210,13 @@ def detach(
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         )
 
-    result = attach_detach(
+    result, server = attach_detach(
         True, id=id, bus=bus, desc=desc, first=first, serial=serial, host=host
     )
-    typer.echo(f"Detached from:\n{result}")
+    if server:
+        typer.echo(f"Detached from device on {server}:\n{result}")
+    else:
+        typer.echo(f"Detached from:\n{result}")
 
 
 def main(args: Sequence[str] | None = None) -> None:

@@ -11,3 +11,42 @@ Source          | <https://github.com/epics-containers/awusb>
 :---:           | :---:
 Docker          | `docker run ghcr.io/epics-containers/awusb:latest`
 Releases        | <https://github.com/epics-containers/awusb/releases>
+
+## Multi-Server Configuration
+
+You can configure `awusb` to scan multiple USB device servers automatically. Create a configuration file at `~/.config/awusb/awusb.config`:
+
+```yaml
+servers:
+  - localhost
+  - raspberrypi
+  - 192.168.1.100
+  - usb-server-1.local
+```
+
+See `awusb.config.example` for a sample configuration file.
+
+### Behavior
+
+- **list**: Without `--host`, queries all configured servers and displays devices grouped by server
+- **attach/detach**: Without `--host`, scans all servers to find a matching device
+  - Fails if no match is found across all servers
+  - Fails if multiple matches are found across different servers
+  - Succeeds if exactly one match is found (reports which server it was found on)
+- **--host flag**: When specified, only queries that specific server (ignores config file)
+
+### Examples
+
+```bash
+# List devices on all configured servers
+awusb list
+
+# List devices on a specific server
+awusb list --host raspberrypi
+
+# Attach a device (scans all servers)
+awusb attach --desc "Camera"
+
+# Attach a device from a specific server
+awusb attach --desc "Camera" --host 192.168.1.100
+```

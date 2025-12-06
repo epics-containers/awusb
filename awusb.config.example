@@ -1,0 +1,12 @@
+# Example awusb configuration file
+# Copy this file to ~/.config/awusb/awusb.config and edit as needed
+
+# List of USB device servers to scan
+# Each server should be a hostname or IP address
+# The list command will query all servers and display devices grouped by server
+# The attach/detach commands will scan all servers to find a matching device
+servers:
+  - localhost
+  - raspberrypi
+  - 192.168.1.100
+  - usb-server-1.local
