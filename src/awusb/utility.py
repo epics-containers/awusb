@@ -1,6 +1,9 @@
 """Utility functions for subprocess operations."""
 
+import logging
 import subprocess
+
+logger = logging.getLogger(__name__)
 
 
 def run_command(
@@ -25,14 +28,18 @@ def run_command(
         CalledProcessError: If check=True and the command returns non-zero
     """
     try:
-        return subprocess.run(
+        logger.debug(f"Running command: {' '.join(command)}")
+        result = subprocess.run(
             command,
             capture_output=capture_output,
             text=text,
             check=check,
         )
+        logger.debug(f"Command completed with exit code {result.returncode}")
+        return result
     except subprocess.CalledProcessError as e:
-        print(f"\nCommand '{' '.join(command)}' failed with exit code {e.returncode}")
-        print(f"Stdout: {e.stdout}")
-        print(f"Stderr: {e.stderr}")
+        cmd_str = " ".join(command)
+        logger.error(f"Command '{cmd_str}' failed with exit code {e.returncode}")
+        logger.debug(f"Stdout: {e.stdout}")
+        logger.debug(f"Stderr: {e.stderr}")
         raise RuntimeError(e.stderr) from e

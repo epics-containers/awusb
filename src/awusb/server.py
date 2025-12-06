@@ -1,3 +1,4 @@
+import logging
 import socket
 import threading
 
@@ -13,6 +14,8 @@ from .models import (
 from .usbdevice import UsbDevice, get_device, get_devices
 from .utility import run_command
 
+logger = logging.getLogger(__name__)
+
 
 class CommandServer:
     def __init__(self, host: str = "0.0.0.0", port: int = 5000):
@@ -23,7 +26,9 @@ class CommandServer:
 
     def handle_list(self) -> list[UsbDevice]:
         """Handle the 'list' command."""
+        logger.debug("Retrieving list of USB devices")
         result = get_devices()
+        logger.debug(f"Found {len(result)} USB devices")
         return result
 
     def handle_attach(
@@ -31,12 +36,17 @@ class CommandServer:
         args: AttachRequest,
     ) -> UsbDevice:
         """Handle the 'attach' command with optional arguments."""
-        device = get_device(**args.model_dump(exclude={"command", "detach"}))
+        criteria = args.model_dump(exclude={"command", "detach"})
+        logger.debug(f"Looking for device with criteria: {criteria}")
+        device = get_device(**criteria)
         detach = args.detach
+        logger.info(f"Unbinding device {device.bus_id}")
         run_command(["sudo", "usbip", "unbind", "-b", device.bus_id], check=False)
         if not detach:
-            print(f"binding:\n{device}")
+            logger.info(f"Binding device: {device.bus_id} ({device.description})")
             run_command(["sudo", "usbip", "bind", "-b", device.bus_id])
+        else:
+            logger.info(f"Device unbound: {device.bus_id} ({device.description})")
         return device
 
     def _send_response(
@@ -72,13 +82,14 @@ class CommandServer:
                 return
 
             if isinstance(request, ListRequest):
-                print(f"List from: {address}")
+                logger.info(f"List request from {address}")
                 result = self.handle_list()
                 response = ListResponse(status="success", data=result)
                 self._send_response(client_socket, response)
 
             elif isinstance(request, AttachRequest):
-                print(f"Attach from : {address}, args: {request}")
+                action = "detach" if request.detach else "attach"
+                logger.info(f"{action.capitalize()} request from {address}: {request}")
                 result = self.handle_attach(args=request)
                 response = AttachResponse(status="success", data=result)
                 self._send_response(client_socket, response)
@@ -95,26 +106,30 @@ class CommandServer:
 
     def start(self):
         """Start the server."""
+        logger.debug(f"Starting server on {self.host}:{self.port}")
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind((self.host, self.port))
         self.server_socket.listen(5)
         self.running = True
 
-        print(f"Server listening on {self.host}:{self.port}")
+        logger.info(f"Server listening on {self.host}:{self.port}")
 
         while self.running:
             try:
                 client_socket, address = self.server_socket.accept()
+                logger.debug(f"Client connected from {address}")
                 client_thread = threading.Thread(
                     target=self.handle_client, args=(client_socket, address)
                 )
                 client_thread.start()
             except OSError:
+                logger.debug("Server socket closed")
                 break
 
     def stop(self):
         """Stop the server."""
+        logger.info("Stopping server")
         self.running = False
         if self.server_socket:
             self.server_socket.close()
