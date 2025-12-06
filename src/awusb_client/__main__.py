@@ -48,7 +48,8 @@ def client(
 ) -> None:
     """Client commands for USB device management."""
     if action == "list":
-        typer.echo(list_devices())
+        for device in list_devices():
+            print(device)
     elif action == "attach":
         attach_device("hello")
         print("attach called")

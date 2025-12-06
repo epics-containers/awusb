@@ -1,24 +1,37 @@
 import re
 import subprocess
+from dataclasses import dataclass, field
 
 import usb.core
-import usb.util
 
 
+@dataclass
 class UsbDevice:
-    def __init__(self, bus_id: str, vendor_id: str, product_id: str):
-        self.bus_id = bus_id
-        self.vendor_id = vendor_id
-        self.product_id = product_id
+    bus_id: str
+    vendor_id: str
+    product_id: str
+    # the remaining parameters are only supplied when reconstructing
+    # a UsbDevice instance from a dictionary (ie. when receiving from server)
+    bus: int = 0
+    port_numbers: tuple[int, ...] = field(default_factory=tuple)
+    device_name: str = ""
+    serial: str = ""
+    description: str = "unknown"
+    client_reconstructed: bool = False
+
+    def __post_init__(self):
+        if self.client_reconstructed:
+            return  # skip initialization when reconstructing from dict
+
         # Split bus_id into bus and port numbers
-        bus_str, port_str = bus_id.split("-")
+        bus_str, port_str = self.bus_id.split("-")
         self.bus = int(bus_str)
         self.port_numbers = tuple(int(p) for p in port_str.split("."))
 
         # Find the device
         device = usb.core.find(
-            idVendor=int(vendor_id, 16),
-            idProduct=int(product_id, 16),
+            idVendor=int(self.vendor_id, 16),
+            idProduct=int(self.product_id, 16),
             bus=self.bus,
             custom_match=lambda d: self._filter_on_port_numbers(d, self.port_numbers),
         )
@@ -28,11 +41,10 @@ class UsbDevice:
         try:
             self.serial = getattr(device, "serial_number", "")
         except (ValueError, usb.core.USBError):
-            self.serial = ""
+            pass
 
         # it is very hard to get vendor and product strings due to permissions
         # so call out to lsusb which has no issue extracting them
-        self.description = "unknown"
         try:
             lsusb_result = subprocess.run(
                 ["lsusb", "-s", f"{device.bus:03d}:{device.address:03d}"],
@@ -41,7 +53,9 @@ class UsbDevice:
                 check=True,
             )
             lsusb_output = lsusb_result.stdout.strip()
-            desc_match = re.search(rf".*{vendor_id}:{product_id} (.+)$", lsusb_output)
+            desc_match = re.search(
+                rf".*{self.vendor_id}:{self.product_id} (.+)$", lsusb_output
+            )
             if desc_match:
                 self.description = desc_match.group(1)
         except subprocess.CalledProcessError:

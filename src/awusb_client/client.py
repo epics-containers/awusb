@@ -22,7 +22,8 @@ def list_devices(server_host="localhost", server_port=5000) -> list[UsbDevice]:
         sock.sendall(json.dumps(request).encode("utf-8"))
 
         response = sock.recv(4096).decode("utf-8")
-        return json.loads(response)
+        decoded = json.loads(response)
+        return [UsbDevice(**device) for device in decoded.get("data", [])]
 
 
 def attach_device(device_id, server_host="localhost", server_port=5000):
