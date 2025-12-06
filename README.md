@@ -14,7 +14,14 @@ Releases        | <https://github.com/epics-containers/awusb/releases>
 
 ## Multi-Server Configuration
 
-You can configure `awusb` to scan multiple USB device servers automatically. Create a configuration file at `~/.config/awusb/awusb.config`:
+You can configure `awusb` to scan multiple USB device servers automatically. The client discovers configuration files in the following priority order:
+
+1. **Command-line flag**: `--config /path/to/config.yaml`
+2. **Environment variable**: `AWUSB_CONFIG=/path/to/config.yaml`
+3. **Project-local config**: `.awusb.config` in current directory
+4. **User config**: `~/.config/awusb/awusb.config` (default)
+
+Create a configuration file with the following format:
 
 ```yaml
 servers:
@@ -28,6 +35,26 @@ timeout: 5.0
 ```
 
 See `awusb.config.example` for a sample configuration file.
+
+### Config File Discovery Examples
+
+```bash
+# Use default config from ~/.config/awusb/awusb.config
+awusb list
+
+# Use project-specific config from current directory
+cd /path/to/project
+echo "servers: [myserver]" > .awusb.config
+awusb list
+
+# Use environment variable (useful in CI/CD)
+export AWUSB_CONFIG=/etc/awusb/production.config
+awusb list
+
+# Use command-line flag (highest priority)
+awusb list --config /tmp/test-servers.yaml
+awusb attach --desc Camera --config ./custom.config
+```
 
 ### Connection Timeout
 

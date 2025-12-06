@@ -2,6 +2,7 @@
 
 import logging
 from collections.abc import Sequence
+from pathlib import Path
 from typing import cast
 
 import typer
@@ -69,6 +70,9 @@ def list_command(
     host: str | None = typer.Option(
         None, "--host", "-H", help="Server hostname or IP address"
     ),
+    config: Path | None = typer.Option(
+        None, "--config", "-c", help="Path to config file"
+    ),
     debug: bool = typer.Option(False, "--debug", help="Enable debug logging"),
 ) -> None:
     """List the available USB devices from the server(s)."""
@@ -93,7 +97,7 @@ def list_command(
             print(device)
     else:
         # Query all servers from config
-        servers = get_servers()
+        servers = get_servers(config)
         if not servers:
             logger.warning("No servers configured, defaulting to localhost")
             servers = ["localhost"]
@@ -119,6 +123,7 @@ def attach_detach(detach: bool = False, **kwargs) -> tuple[UsbDevice, str | None
     """
     args = AttachRequest(detach=detach, **kwargs)
     host = kwargs.get("host")
+    config = kwargs.get("config")
 
     if host:
         # Single server specified
@@ -132,7 +137,7 @@ def attach_detach(detach: bool = False, **kwargs) -> tuple[UsbDevice, str | None
         return device, None
     else:
         # Scan all servers from config
-        servers = get_servers()
+        servers = get_servers(config)
         if not servers:
             logger.warning("No servers configured, defaulting to localhost")
             servers = ["localhost"]
@@ -165,6 +170,9 @@ def attach(
     first: bool = typer.Option(
         False, "--first", "-f", help="Attach the first match if multiple found"
     ),
+    config: Path | None = typer.Option(
+        None, "--config", "-c", help="Path to config file"
+    ),
     debug: bool = typer.Option(False, "--debug", help="Enable debug logging"),
 ) -> None:
     """Attach a USB device from the server."""
@@ -175,7 +183,14 @@ def attach(
         )
 
     result, server = attach_detach(
-        False, id=id, bus=bus, desc=desc, first=first, serial=serial, host=host
+        False,
+        id=id,
+        bus=bus,
+        desc=desc,
+        first=first,
+        serial=serial,
+        host=host,
+        config=config,
     )
     if server:
         typer.echo(f"Attached to device on {server}:\n{result}")
@@ -201,9 +216,12 @@ def detach(
     first: bool = typer.Option(
         False, "--first", "-f", help="Attach the first match if multiple found"
     ),
+    config: Path | None = typer.Option(
+        None, "--config", "-c", help="Path to config file"
+    ),
     debug: bool = typer.Option(False, "--debug", help="Enable debug logging"),
 ) -> None:
-    """Attach a USB device from the server."""
+    """Detach a USB device from the server."""
     if debug:
         logging.basicConfig(
             level=logging.DEBUG,
@@ -211,7 +229,14 @@ def detach(
         )
 
     result, server = attach_detach(
-        True, id=id, bus=bus, desc=desc, first=first, serial=serial, host=host
+        True,
+        id=id,
+        bus=bus,
+        desc=desc,
+        first=first,
+        serial=serial,
+        host=host,
+        config=config,
     )
     if server:
         typer.echo(f"Detached from device on {server}:\n{result}")

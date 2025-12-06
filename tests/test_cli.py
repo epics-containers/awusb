@@ -407,7 +407,7 @@ class TestCLIIntegration:
         """Test detach command help."""
         result = runner.invoke(app, ["detach", "--help"])
         assert result.exit_code == 0
-        assert "Attach a USB device" in result.stdout  # Uses same text
+        assert "Detach a USB device" in result.stdout
 
     def test_server_help(self):
         """Test server command help."""

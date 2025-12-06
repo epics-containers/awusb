@@ -1,6 +1,7 @@
 """Configuration management for awusb."""
 
 import logging
+import os
 from pathlib import Path
 
 import yaml
@@ -11,21 +12,61 @@ DEFAULT_CONFIG_PATH = Path.home() / ".config" / "awusb" / "awusb.config"
 DEFAULT_TIMEOUT = 5.0
 
 
+def discover_config_path() -> Path | None:
+    """
+    Discover config file path using the following priority:
+    1. Environment variable AWUSB_CONFIG
+    2. Local .awusb.config in current directory
+    3. Default ~/.config/awusb/awusb.config
+
+    Returns:
+        Path to config file if found, None otherwise.
+    """
+    # 1. Check environment variable
+    env_config = os.environ.get("AWUSB_CONFIG")
+    if env_config:
+        env_path = Path(env_config).expanduser()
+        if env_path.exists():
+            logger.debug(f"Using config from AWUSB_CONFIG: {env_path}")
+            return env_path
+        else:
+            logger.warning(
+                f"AWUSB_CONFIG points to non-existent file: {env_path}"
+            )
+
+    # 2. Check local directory
+    local_config = Path.cwd() / ".awusb.config"
+    if local_config.exists():
+        logger.debug(f"Using local config: {local_config}")
+        return local_config
+
+    # 3. Check default location
+    if DEFAULT_CONFIG_PATH.exists():
+        logger.debug(f"Using default config: {DEFAULT_CONFIG_PATH}")
+        return DEFAULT_CONFIG_PATH
+
+    logger.debug("No config file found")
+    return None
+
+
 def get_servers(config_path: Path | None = None) -> list[str]:
     """
     Read list of server addresses from config file.
 
     Args:
-        config_path: Path to config file. If None, uses default location.
+        config_path: Path to config file. If None, discovers using:
+            1. AWUSB_CONFIG environment variable
+            2. .awusb.config in current directory
+            3. ~/.config/awusb/awusb.config (default)
 
     Returns:
         List of server hostnames/IPs. Returns empty list if file doesn't exist.
     """
     if config_path is None:
-        config_path = DEFAULT_CONFIG_PATH
+        config_path = discover_config_path()
 
-    if not config_path.exists():
-        logger.debug(f"Config file not found: {config_path}")
+    if config_path is None:
+        logger.debug("No config file found")
         return []
 
     try:
@@ -54,15 +95,18 @@ def get_timeout(config_path: Path | None = None) -> float:
     Read connection timeout from config file.
 
     Args:
-        config_path: Path to config file. If None, uses default location.
+        config_path: Path to config file. If None, discovers using:
+            1. AWUSB_CONFIG environment variable
+            2. .awusb.config in current directory
+            3. ~/.config/awusb/awusb.config (default)
 
     Returns:
         Timeout in seconds. Returns default if not configured.
     """
     if config_path is None:
-        config_path = DEFAULT_CONFIG_PATH
+        config_path = discover_config_path()
 
-    if not config_path.exists():
+    if config_path is None:
         return DEFAULT_TIMEOUT
 
     try:
