@@ -5,7 +5,7 @@ from collections.abc import Sequence
 import typer
 
 from . import __version__
-from .client import attach_device, list_devices
+from .client import attach_detach_device, list_devices
 from .models import AttachRequest
 from .server import CommandServer
 from .usbdevice import UsbDevice, get_devices
@@ -70,10 +70,11 @@ def list(
 def attach_detach(detach: bool = False, **kwargs) -> UsbDevice:
     """Attach or detach a USB device from the server."""
     args = AttachRequest(detach=detach, **kwargs)
-    result = attach_device(
+    result = attach_detach_device(
         args=args,
         server_host=kwargs.get("host", "localhost"),
         server_port=5000,
+        detach=detach,
     )
     return result
 
@@ -102,6 +103,32 @@ def attach(
         False, id=id, bus=bus, desc=desc, first=first, serial=serial, host=host
     )
     typer.echo(f"Attached to:\n{result}")
+
+
+@app.command()
+def detach(
+    id: str | None = typer.Option(None, "--id", "-d", help="Device ID e.g. 0bda:5400"),
+    serial: str | None = typer.Option(
+        None, "--serial", "-s", help="Device serial number"
+    ),
+    desc: str | None = typer.Option(
+        None, "--desc", help="Device description substring"
+    ),
+    host: str | None = typer.Option(
+        None, "--host", "-H", help="Server hostname or IP address"
+    ),
+    bus: str | None = typer.Option(
+        None, "--bus", "-b", help="Device bus ID e.g. 1-2.3.4"
+    ),
+    first: bool = typer.Option(
+        False, "--first", "-f", help="Attach the first match if multiple found"
+    ),
+) -> None:
+    """Attach a USB device from the server."""
+    result = attach_detach(
+        True, id=id, bus=bus, desc=desc, first=first, serial=serial, host=host
+    )
+    typer.echo(f"Detached from:\n{result}")
 
 
 def main(args: Sequence[str] | None = None) -> None:

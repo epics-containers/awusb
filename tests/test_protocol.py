@@ -27,7 +27,7 @@ from unittest.mock import patch
 
 import pytest
 
-from awusb.client import attach_device, list_devices
+from awusb.client import attach_detach_device, list_devices
 from awusb.models import (
     AttachRequest,
     AttachResponse,
@@ -239,7 +239,7 @@ class TestClientServerIntegration:
     def test_attach_device_integration(self, server, server_port):
         """Test full attach device flow from client to server."""
         request = AttachRequest(id="1234:5678")
-        success = attach_device(
+        success = attach_detach_device(
             request, server_host="127.0.0.1", server_port=server_port
         )
 
