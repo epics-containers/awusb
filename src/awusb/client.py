@@ -2,14 +2,15 @@ import socket
 
 from pydantic import TypeAdapter
 
-from awusb.models import (
+from .models import (
     AttachRequest,
     AttachResponse,
     ErrorResponse,
     ListRequest,
     ListResponse,
 )
-from awusb.usbdevice import UsbDevice
+from .usbdevice import UsbDevice
+from .utility import run_command
 
 
 def send_request(sock, request):
@@ -46,11 +47,11 @@ def list_devices(server_host="localhost", server_port=5000) -> list[UsbDevice]:
         return response.data
 
 
-def attach_device(
-    args: AttachRequest, server_host="localhost", server_port=5000
-) -> bool:
+def attach_detach_device(
+    args: AttachRequest, server_host="localhost", server_port=5000, detach: bool = False
+) -> UsbDevice:
     """
-    Request to attach a USB device from the server.
+    Request to attach or detach a USB device from the server.
 
     Args:
         id: ID of the device to attach
@@ -58,15 +59,27 @@ def attach_device(
         server_port: Server port number
 
     Returns:
-        True if successful, False otherwise
+        The device that was attached, or detached
     """
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.connect((server_host, server_port))
 
-        print(f"Request: {args}")
         response = send_request(sock, args)
 
         if isinstance(response, ErrorResponse):
             raise RuntimeError(f"Server error: {response.message}")
 
-        return response.status == "success"
+        if not detach:
+            run_command(
+                [
+                    "sudo",
+                    "usbip",
+                    "attach",
+                    "-r",
+                    server_host,
+                    "-b",
+                    response.data.bus_id,
+                ]
+            )
+
+        return response.data

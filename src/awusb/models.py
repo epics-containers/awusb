@@ -21,6 +21,8 @@ class AttachRequest(BaseModel):
     bus: str | None = None
     serial: str | None = None
     desc: str | None = None
+    first: bool = False
+    detach: bool = False
 
 
 class ListResponse(BaseModel):
@@ -34,6 +36,7 @@ class AttachResponse(BaseModel):
     """Response to attach request."""
 
     status: Literal["success", "failure"]
+    data: UsbDevice
 
 
 class ErrorResponse(BaseModel):
