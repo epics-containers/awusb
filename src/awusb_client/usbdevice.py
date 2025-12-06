@@ -48,7 +48,7 @@ class UsbDevice:
             pass  # leave description as "unknown"
 
     def __repr__(self):
-        ser = f" [serial_no={self.serial}]" if self.serial else ""
+        ser = f" SERIAL={self.serial}" if self.serial else ""
         return (
             f"id={self.vendor_id}:{self.product_id} bus={self.bus_id:13} "
             f"dev={self.device_name:20} "
