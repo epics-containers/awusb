@@ -246,7 +246,7 @@ class TestClientServerIntegration:
 
     def test_list_devices_integration(self, server, server_port, mock_usb_devices):
         """Test full list devices flow from client to server."""
-        devices = list_devices(server_host="127.0.0.1", server_port=server_port)
+        devices = list_devices(server_hosts="127.0.0.1", server_port=server_port)
 
         assert len(devices) == 2
         assert devices[0].bus_id == "1-1.1"
@@ -258,7 +258,7 @@ class TestClientServerIntegration:
         with patch("awusb.client.run_command"):
             request = AttachRequest(id="1234:5678")
             device = attach_detach_device(
-                request, server_host="127.0.0.1", server_port=server_port
+                request, server_hosts="127.0.0.1", server_port=server_port
             )
 
             assert isinstance(device, UsbDevice)
@@ -268,7 +268,7 @@ class TestClientServerIntegration:
         """Test full detach device flow from client to server."""
         request = AttachRequest(id="1234:5678", detach=True)
         device = attach_detach_device(
-            request, server_host="127.0.0.1", server_port=server_port, detach=True
+            request, server_hosts="127.0.0.1", server_port=server_port, detach=True
         )
 
         assert isinstance(device, UsbDevice)
@@ -318,7 +318,7 @@ class TestClientServerIntegration:
         # Override the mock to raise an exception
         with patch("awusb.server.get_devices", side_effect=Exception("Test error")):
             with pytest.raises(RuntimeError, match="Server error"):
-                list_devices(server_host="127.0.0.1", server_port=server_port)
+                list_devices(server_hosts="127.0.0.1", server_port=server_port)
 
 
 class TestProtocolRobustness:

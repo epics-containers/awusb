@@ -2,13 +2,17 @@
 
 import logging
 from collections.abc import Sequence
+from pathlib import Path
+from typing import cast
 
 import typer
 
 from . import __version__
 from .client import attach_detach_device, list_devices
+from .config import get_servers
 from .models import AttachRequest
 from .server import CommandServer
+from .service import install_systemd_service, uninstall_systemd_service
 from .usbdevice import UsbDevice, get_devices
 
 __all__ = ["main"]
@@ -56,8 +60,8 @@ def server(
     server.start()
 
 
-@app.command()
-def list(
+@app.command(name="list")
+def list_command(
     local: bool = typer.Option(
         False,
         "--local",
@@ -67,9 +71,12 @@ def list(
     host: str | None = typer.Option(
         None, "--host", "-H", help="Server hostname or IP address"
     ),
+    config: Path | None = typer.Option(
+        None, "--config", "-c", help="Path to config file"
+    ),
     debug: bool = typer.Option(False, "--debug", help="Enable debug logging"),
 ) -> None:
-    """List the available USB devices from the server."""
+    """List the available USB devices from the server(s)."""
     if debug:
         logging.basicConfig(
             level=logging.DEBUG,
@@ -79,25 +86,71 @@ def list(
     if local:
         logger.debug("Listing local USB devices")
         devices = get_devices()
-    else:
-        devices = list_devices(
-            server_host=host if host else "localhost", server_port=5000
+        for device in devices:
+            print(device)
+    elif host:
+        # Single server specified
+        logger.debug(f"Listing devices from {host}")
+        devices = cast(
+            list[UsbDevice], list_devices(server_hosts=host, server_port=5055)
         )
+        for device in devices:
+            print(device)
+    else:
+        # Query all servers from config
+        servers = get_servers(config)
+        if not servers:
+            logger.warning("No servers configured, defaulting to localhost")
+            servers = ["localhost"]
 
-    for device in devices:
-        print(device)
+        results = cast(
+            dict[str, list[UsbDevice]],
+            list_devices(server_hosts=servers, server_port=5055),
+        )
+        for server, devices in results.items():
+            print(f"\n=== {server} ===")
+            if devices:
+                for device in devices:
+                    print(device)
+            else:
+                print("No devices or server unavailable")
 
 
-def attach_detach(detach: bool = False, **kwargs) -> UsbDevice:
-    """Attach or detach a USB device from the server."""
+def attach_detach(detach: bool = False, **kwargs) -> tuple[UsbDevice, str | None]:
+    """Attach or detach a USB device from the server.
+
+    Returns:
+        Tuple of (device, server) where server is None if --host was specified
+    """
     args = AttachRequest(detach=detach, **kwargs)
-    result = attach_detach_device(
-        args=args,
-        server_host=kwargs.get("host", "localhost"),
-        server_port=5000,
-        detach=detach,
-    )
-    return result
+    host = kwargs.get("host")
+    config = kwargs.get("config")
+
+    if host:
+        # Single server specified
+        result = attach_detach_device(
+            args=args,
+            server_hosts=host,
+            server_port=5055,
+            detach=detach,
+        )
+        device = cast(UsbDevice, result)
+        return device, None
+    else:
+        # Scan all servers from config
+        servers = get_servers(config)
+        if not servers:
+            logger.warning("No servers configured, defaulting to localhost")
+            servers = ["localhost"]
+
+        result = attach_detach_device(
+            args=args,
+            server_hosts=servers,
+            server_port=5055,
+            detach=detach,
+        )
+        device, server = cast(tuple[UsbDevice, str], result)
+        return device, server
 
 
 @app.command()
@@ -118,6 +171,9 @@ def attach(
     first: bool = typer.Option(
         False, "--first", "-f", help="Attach the first match if multiple found"
     ),
+    config: Path | None = typer.Option(
+        None, "--config", "-c", help="Path to config file"
+    ),
     debug: bool = typer.Option(False, "--debug", help="Enable debug logging"),
 ) -> None:
     """Attach a USB device from the server."""
@@ -127,10 +183,20 @@ def attach(
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         )
 
-    result = attach_detach(
-        False, id=id, bus=bus, desc=desc, first=first, serial=serial, host=host
+    result, server = attach_detach(
+        False,
+        id=id,
+        bus=bus,
+        desc=desc,
+        first=first,
+        serial=serial,
+        host=host,
+        config=config,
     )
-    typer.echo(f"Attached to:\n{result}")
+    if server:
+        typer.echo(f"Attached to device on {server}:\n{result}")
+    else:
+        typer.echo(f"Attached to:\n{result}")
 
 
 @app.command()
@@ -151,19 +217,70 @@ def detach(
     first: bool = typer.Option(
         False, "--first", "-f", help="Attach the first match if multiple found"
     ),
+    config: Path | None = typer.Option(
+        None, "--config", "-c", help="Path to config file"
+    ),
     debug: bool = typer.Option(False, "--debug", help="Enable debug logging"),
 ) -> None:
-    """Attach a USB device from the server."""
+    """Detach a USB device from the server."""
     if debug:
         logging.basicConfig(
             level=logging.DEBUG,
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         )
 
-    result = attach_detach(
-        True, id=id, bus=bus, desc=desc, first=first, serial=serial, host=host
+    result, server = attach_detach(
+        True,
+        id=id,
+        bus=bus,
+        desc=desc,
+        first=first,
+        serial=serial,
+        host=host,
+        config=config,
     )
-    typer.echo(f"Detached from:\n{result}")
+    if server:
+        typer.echo(f"Detached from device on {server}:\n{result}")
+    else:
+        typer.echo(f"Detached from:\n{result}")
+
+
+@app.command()
+def install_service(
+    system: bool = typer.Option(
+        False,
+        "--system",
+        help="Install as system service (requires sudo/root)",
+    ),
+    user: str | None = typer.Option(
+        None,
+        "--user",
+        "-u",
+        help="User to run the service as (default: current user)",
+    ),
+) -> None:
+    """Install awusb server as a systemd service."""
+    try:
+        install_systemd_service(user=user, system_wide=system)
+    except RuntimeError as e:
+        typer.echo(f"Installation failed: {e}", err=True)
+        raise typer.Exit(1)
+
+
+@app.command()
+def uninstall_service(
+    system: bool = typer.Option(
+        False,
+        "--system",
+        help="Uninstall system service (requires sudo/root)",
+    ),
+) -> None:
+    """Uninstall awusb server systemd service."""
+    try:
+        uninstall_systemd_service(system_wide=system)
+    except RuntimeError as e:
+        typer.echo(f"Uninstallation failed: {e}", err=True)
+        raise typer.Exit(1)
 
 
 def main(args: Sequence[str] | None = None) -> None:

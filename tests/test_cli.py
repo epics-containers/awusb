@@ -71,7 +71,13 @@ class TestListCommand:
 
     def test_list_remote(self, mock_usb_devices):
         """Test list command to query remote server."""
-        with patch("awusb.__main__.list_devices", return_value=mock_usb_devices):
+        with (
+            patch("awusb.__main__.get_servers", return_value=[]),
+            patch(
+                "awusb.__main__.list_devices",
+                return_value={"localhost": mock_usb_devices},
+            ),
+        ):
             result = runner.invoke(app, ["list"])
             assert result.exit_code == 0
             assert "Test Device 1" in result.stdout
@@ -85,20 +91,40 @@ class TestListCommand:
             result = runner.invoke(app, ["list", "--host", "192.168.1.100"])
             assert result.exit_code == 0
             mock_list.assert_called_once_with(
-                server_host="192.168.1.100", server_port=5000
+                server_hosts="192.168.1.100", server_port=5055
             )
 
     def test_list_error_handling(self):
         """Test list command error handling."""
-        with patch(
-            "awusb.__main__.list_devices", side_effect=RuntimeError("Connection failed")
+        with (
+            patch("awusb.__main__.get_servers", return_value=[]),
+            patch(
+                "awusb.__main__.list_devices",
+                return_value={"localhost": []},
+            ),
         ):
             result = runner.invoke(app, ["list"])
-            # The exception is caught and displayed
-            assert result.exit_code != 0
-            assert result.exception is not None or "Connection failed" in str(
-                result.output
-            )
+            # In multi-server mode, errors are caught and reported gracefully
+            assert result.exit_code == 0  # Changed: multi-server mode handles errors
+            assert "localhost" in result.stdout
+
+    def test_list_multi_server(self, mock_usb_devices):
+        """Test list command with multiple servers."""
+        servers = ["server1", "server2"]
+        results = {
+            "server1": [mock_usb_devices[0]],
+            "server2": [mock_usb_devices[1]],
+        }
+        with (
+            patch("awusb.__main__.get_servers", return_value=servers),
+            patch("awusb.__main__.list_devices", return_value=results),
+        ):
+            result = runner.invoke(app, ["list"])
+            assert result.exit_code == 0
+            assert "=== server1 ===" in result.stdout
+            assert "=== server2 ===" in result.stdout
+            assert "Test Device 1" in result.stdout
+            assert "Test Device 2" in result.stdout
 
 
 class TestAttachCommand:
@@ -109,7 +135,9 @@ class TestAttachCommand:
         with patch(
             "awusb.__main__.attach_detach_device", return_value=mock_usb_devices[0]
         ) as mock_attach:
-            result = runner.invoke(app, ["attach", "--id", "1234:5678"])
+            result = runner.invoke(
+                app, ["attach", "--id", "1234:5678", "--host", "localhost"]
+            )
             assert result.exit_code == 0
             assert "Attached to:" in result.stdout
             assert "Test Device 1" in result.stdout
@@ -124,7 +152,9 @@ class TestAttachCommand:
         with patch(
             "awusb.__main__.attach_detach_device", return_value=mock_usb_devices[0]
         ) as mock_attach:
-            result = runner.invoke(app, ["attach", "--serial", "ABC123"])
+            result = runner.invoke(
+                app, ["attach", "--serial", "ABC123", "--host", "localhost"]
+            )
             assert result.exit_code == 0
 
             call_args = mock_attach.call_args
@@ -135,7 +165,9 @@ class TestAttachCommand:
         with patch(
             "awusb.__main__.attach_detach_device", return_value=mock_usb_devices[0]
         ) as mock_attach:
-            result = runner.invoke(app, ["attach", "--desc", "Test"])
+            result = runner.invoke(
+                app, ["attach", "--desc", "Test", "--host", "localhost"]
+            )
             assert result.exit_code == 0
 
             call_args = mock_attach.call_args
@@ -146,7 +178,9 @@ class TestAttachCommand:
         with patch(
             "awusb.__main__.attach_detach_device", return_value=mock_usb_devices[0]
         ) as mock_attach:
-            result = runner.invoke(app, ["attach", "--bus", "1-1.1"])
+            result = runner.invoke(
+                app, ["attach", "--bus", "1-1.1", "--host", "localhost"]
+            )
             assert result.exit_code == 0
 
             call_args = mock_attach.call_args
@@ -157,7 +191,9 @@ class TestAttachCommand:
         with patch(
             "awusb.__main__.attach_detach_device", return_value=mock_usb_devices[0]
         ) as mock_attach:
-            result = runner.invoke(app, ["attach", "--desc", "Test", "--first"])
+            result = runner.invoke(
+                app, ["attach", "--desc", "Test", "--first", "--host", "localhost"]
+            )
             assert result.exit_code == 0
 
             call_args = mock_attach.call_args
@@ -174,7 +210,7 @@ class TestAttachCommand:
             assert result.exit_code == 0
 
             call_args = mock_attach.call_args
-            assert call_args.kwargs["server_host"] == "raspberrypi"
+            assert call_args.kwargs["server_hosts"] == "raspberrypi"
 
     def test_attach_error_handling(self):
         """Test attach command error handling."""
@@ -197,7 +233,9 @@ class TestDetachCommand:
         with patch(
             "awusb.__main__.attach_detach_device", return_value=mock_usb_devices[0]
         ) as mock_detach:
-            result = runner.invoke(app, ["detach", "--id", "1234:5678"])
+            result = runner.invoke(
+                app, ["detach", "--id", "1234:5678", "--host", "localhost"]
+            )
             assert result.exit_code == 0
             assert "Detached from:" in result.stdout
 
@@ -211,7 +249,9 @@ class TestDetachCommand:
         with patch(
             "awusb.__main__.attach_detach_device", return_value=mock_usb_devices[0]
         ) as mock_detach:
-            result = runner.invoke(app, ["detach", "--desc", "Camera"])
+            result = runner.invoke(
+                app, ["detach", "--desc", "Camera", "--host", "localhost"]
+            )
             assert result.exit_code == 0
 
             call_args = mock_detach.call_args
@@ -228,7 +268,7 @@ class TestDetachCommand:
             assert result.exit_code == 0
 
             call_args = mock_detach.call_args
-            assert call_args.kwargs["server_host"] == "raspberrypi"
+            assert call_args.kwargs["server_hosts"] == "raspberrypi"
 
     def test_detach_error_handling(self):
         """Test detach command error handling."""
@@ -241,6 +281,84 @@ class TestDetachCommand:
             assert result.exception is not None or "Device not attached" in str(
                 result.output
             )
+
+
+class TestMultiServerOperations:
+    """Test multi-server attach/detach operations."""
+
+    def test_attach_multi_server_single_match(self, mock_usb_devices):
+        """Test attach across multiple servers with single match."""
+        servers = ["server1", "server2"]
+        with (
+            patch("awusb.__main__.get_servers", return_value=servers),
+            patch(
+                "awusb.__main__.attach_detach_device",
+                return_value=(mock_usb_devices[0], "server2"),
+            ),
+        ):
+            result = runner.invoke(app, ["attach", "--id", "1234:5678"])
+            assert result.exit_code == 0
+            assert "server2" in result.stdout
+            assert "Test Device 1" in result.stdout
+
+    def test_detach_multi_server_single_match(self, mock_usb_devices):
+        """Test detach across multiple servers with single match."""
+        servers = ["server1", "server2"]
+        with (
+            patch("awusb.__main__.get_servers", return_value=servers),
+            patch(
+                "awusb.__main__.attach_detach_device",
+                return_value=(mock_usb_devices[0], "server1"),
+            ),
+        ):
+            result = runner.invoke(app, ["detach", "--desc", "Camera"])
+            assert result.exit_code == 0
+            assert "server1" in result.stdout
+
+    def test_attach_multi_server_multiple_matches_fails(self):
+        """Test attach fails with multiple matches without --first."""
+        servers = ["server1", "server2"]
+        with (
+            patch("awusb.__main__.get_servers", return_value=servers),
+            patch(
+                "awusb.__main__.attach_detach_device",
+                side_effect=RuntimeError(
+                    "Multiple devices matched across servers: Test Device on server1, "
+                    "Test Device on server2. Use --first to attach the first match."
+                ),
+            ),
+        ):
+            result = runner.invoke(app, ["attach", "--desc", "Camera"])
+            assert result.exit_code != 0
+            assert result.exception is not None
+
+    def test_attach_multi_server_multiple_matches_with_first(self, mock_usb_devices):
+        """Test attach succeeds with multiple matches when --first is used."""
+        servers = ["server1", "server2"]
+        with (
+            patch("awusb.__main__.get_servers", return_value=servers),
+            patch(
+                "awusb.__main__.attach_detach_device",
+                return_value=(mock_usb_devices[0], "server1"),
+            ),
+        ):
+            result = runner.invoke(app, ["attach", "--desc", "Camera", "--first"])
+            assert result.exit_code == 0
+            assert "server1" in result.stdout
+
+    def test_attach_multi_server_no_match(self):
+        """Test attach across multiple servers with no match."""
+        servers = ["server1", "server2"]
+        with (
+            patch("awusb.__main__.get_servers", return_value=servers),
+            patch(
+                "awusb.__main__.attach_detach_device",
+                side_effect=RuntimeError("No matching device found across 2 servers"),
+            ),
+        ):
+            result = runner.invoke(app, ["attach", "--id", "9999:9999"])
+            assert result.exit_code != 0
+            assert result.exception is not None
 
 
 class TestServerCommand:
@@ -289,7 +407,7 @@ class TestCLIIntegration:
         """Test detach command help."""
         result = runner.invoke(app, ["detach", "--help"])
         assert result.exit_code == 0
-        assert "Attach a USB device" in result.stdout  # Uses same text
+        assert "Detach a USB device" in result.stdout
 
     def test_server_help(self):
         """Test server command help."""
