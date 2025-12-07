@@ -25,7 +25,7 @@ def send_request(
     server_host="localhost",
     server_port=5055,
     raise_on_error=True,
-    timeout=DEFAULT_TIMEOUT,
+    timeout: float | None = DEFAULT_TIMEOUT,
 ):
     """
     Send a request to the server and return the response.
@@ -47,6 +47,10 @@ def send_request(
         OSError: If connection fails
     """
     logger.debug(f"Connecting to server at {server_host}:{server_port}")
+
+    if timeout is None:
+        timeout = get_timeout()
+
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.settimeout(timeout)
@@ -93,8 +97,6 @@ def list_devices(
         If server_hosts is a list: Dictionary mapping server name to
             list of UsbDevice instances
     """
-    if timeout is None:
-        timeout = get_timeout()
 
     # Handle single server (backward compatibility)
     if isinstance(server_hosts, str):
@@ -148,9 +150,6 @@ def attach_detach_device(
     """
     action = "detach" if detach else "attach"
 
-    if timeout is None:
-        timeout = get_timeout()
-
     logger.info(f"Scanning {len(server_hosts)} servers for device to {action}")
     matches = []
 
@@ -186,7 +185,9 @@ def attach_detach_device(
 
     device, server = matches[0]
 
-    if not detach:
+    if detach:
+        logger.info(f"Device detached: {device.description}")
+    else:
         logger.info(f"Attaching device {device.bus_id} from {server} to local system")
         run_command(
             [
@@ -200,8 +201,6 @@ def attach_detach_device(
             ]
         )
         logger.info(f"Device attached: {device.description}")
-    else:
-        logger.info(f"Device detached: {device.description}")
 
     logger.info(f"Device {action}ed on server {server}: {device.description}")
     return device, server
