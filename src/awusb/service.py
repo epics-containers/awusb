@@ -1,9 +1,12 @@
 """Systemd service installation utilities."""
 
+import getpass
 import logging
 import shutil
 import sys
 from pathlib import Path
+
+from awusb.utility import run_command
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +41,6 @@ def get_systemd_service_content(user: str | None = None) -> str:
     Returns:
         String content of the systemd service file.
     """
-    import getpass
-
     if user is None:
         user = getpass.getuser()
 
@@ -52,6 +53,25 @@ def get_systemd_service_content(user: str | None = None) -> str:
     return SYSTEMD_SERVICE_TEMPLATE.format(
         user=user, working_dir=working_dir, executable=executable
     )
+
+
+def _get_service_paths(system_wide: bool) -> tuple[Path, str]:
+    """Get service directory and name based on installation type."""
+    service_name = "awusb.service"
+    if system_wide:
+        service_dir = Path("/etc/systemd/system")
+    else:
+        service_dir = Path.home() / ".config" / "systemd" / "user"
+    return service_dir, service_name
+
+
+def _run_systemctl(args: list[str], system_wide: bool, check: bool = True) -> None:
+    """Run systemctl command with appropriate flags."""
+    cmd = ["systemctl"]
+    if not system_wide:
+        cmd.append("--user")
+    cmd.extend(args)
+    run_command(cmd, check=check)
 
 
 def install_systemd_service(user: str | None = None, system_wide: bool = False) -> None:
@@ -71,14 +91,7 @@ def install_systemd_service(user: str | None = None, system_wide: bool = False) 
         raise RuntimeError("systemd not found. This command requires systemd.")
 
     service_content = get_systemd_service_content(user)
-
-    if system_wide:
-        service_dir = Path("/etc/systemd/system")
-        service_name = "awusb.service"
-    else:
-        service_dir = Path.home() / ".config" / "systemd" / "user"
-        service_name = "awusb.service"
-
+    service_dir, service_name = _get_service_paths(system_wide)
     service_path = service_dir / service_name
 
     # Create directory if it doesn't exist
@@ -103,29 +116,18 @@ def install_systemd_service(user: str | None = None, system_wide: bool = False) 
         raise
 
     # Reload systemd
-    import subprocess
-
     try:
-        if system_wide:
-            subprocess.run(
-                ["systemctl", "daemon-reload"], check=True, capture_output=True
-            )
-            logger.info("System service installed successfully!")
-            logger.info(f"Enable with: sudo systemctl enable {service_name}")
-            logger.info(f"Start with: sudo systemctl start {service_name}")
-            logger.info(f"Status: sudo systemctl status {service_name}")
-        else:
-            subprocess.run(
-                ["systemctl", "--user", "daemon-reload"],
-                check=True,
-                capture_output=True,
-            )
-            logger.info("User service installed successfully!")
-            logger.info(f"Enable with: systemctl --user enable {service_name}")
-            logger.info(f"Start with: systemctl --user start {service_name}")
-            logger.info(f"Status: systemctl --user status {service_name}")
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Failed to reload systemd: {e.stderr.decode()}") from e
+        _run_systemctl(["daemon-reload"], system_wide)
+        scope = "System" if system_wide else "User"
+        sudo = "sudo " if system_wide else ""
+        user_flag = "" if system_wide else "--user "
+
+        logger.info(f"{scope} service installed successfully!")
+        logger.info(f"Enable with: {sudo}systemctl {user_flag}enable {service_name}")
+        logger.info(f"Start with: {sudo}systemctl {user_flag}start {service_name}")
+        logger.info(f"Status: {sudo}systemctl {user_flag}status {service_name}")
+    except RuntimeError as e:
+        raise RuntimeError(f"Failed to reload systemd: {e}") from e
 
 
 def uninstall_systemd_service(system_wide: bool = False) -> None:
@@ -138,43 +140,17 @@ def uninstall_systemd_service(system_wide: bool = False) -> None:
     Raises:
         RuntimeError: If uninstallation fails.
     """
-    if system_wide:
-        service_path = Path("/etc/systemd/system/awusb.service")
-        service_name = "awusb.service"
-    else:
-        service_path = Path.home() / ".config" / "systemd" / "user" / "awusb.service"
-        service_name = "awusb.service"
+    service_dir, service_name = _get_service_paths(system_wide)
+    service_path = service_dir / service_name
 
     if not service_path.exists():
         logger.warning(f"Service file not found: {service_path}")
         return
 
-    # Stop and disable service first
-    import subprocess
-
+    # Stop and disable service first (don't fail if already stopped)
     try:
-        if system_wide:
-            subprocess.run(
-                ["systemctl", "stop", service_name],
-                check=False,
-                capture_output=True,
-            )
-            subprocess.run(
-                ["systemctl", "disable", service_name],
-                check=False,
-                capture_output=True,
-            )
-        else:
-            subprocess.run(
-                ["systemctl", "--user", "stop", service_name],
-                check=False,
-                capture_output=True,
-            )
-            subprocess.run(
-                ["systemctl", "--user", "disable", service_name],
-                check=False,
-                capture_output=True,
-            )
+        _run_systemctl(["stop", service_name], system_wide, check=False)
+        _run_systemctl(["disable", service_name], system_wide, check=False)
     except Exception as e:
         logger.warning(f"Error stopping/disabling service: {e}")
 
@@ -191,16 +167,7 @@ def uninstall_systemd_service(system_wide: bool = False) -> None:
 
     # Reload systemd
     try:
-        if system_wide:
-            subprocess.run(
-                ["systemctl", "daemon-reload"], check=True, capture_output=True
-            )
-        else:
-            subprocess.run(
-                ["systemctl", "--user", "daemon-reload"],
-                check=True,
-                capture_output=True,
-            )
+        _run_systemctl(["daemon-reload"], system_wide)
         logger.info("Service uninstalled successfully!")
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Failed to reload systemd: {e.stderr.decode()}") from e
+    except RuntimeError as e:
+        raise RuntimeError(f"Failed to reload systemd: {e}") from e
