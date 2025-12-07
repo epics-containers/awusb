@@ -2,7 +2,6 @@
 
 import logging
 from collections.abc import Sequence
-from pathlib import Path
 from typing import cast
 
 import typer
@@ -28,8 +27,19 @@ def version_callback(value: bool) -> None:
         raise typer.Exit()
 
 
+def setup_logging(log_level: int) -> None:
+    """Setup logging configuration."""
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        force=True,
+    )
+
+
 @app.callback()
 def common_options(
+    ctx: typer.Context,
     version: bool = typer.Option(
         False,
         "--version",
@@ -37,23 +47,29 @@ def common_options(
         is_eager=True,
         help="Show version and exit",
     ),
+    debug: bool = typer.Option(False, "--debug", help="Enable debug logging"),
 ) -> None:
     """Common options for all commands."""
-    pass
+    # Configure debug logging, all commands
+    if debug:
+        setup_logging(logging.DEBUG)
+
+    # Store debug flag in context for commands that need it
+    ctx.ensure_object(dict)
+    ctx.obj["debug"] = debug
 
 
 @app.command()
 def server(
-    debug: bool = typer.Option(False, "--debug", "-d", help="Enable debug logging"),
+    ctx: typer.Context,
 ) -> None:
     """Start the USB sharing server."""
-    # Configure logging
+    debug = ctx.obj.get("debug", False)
     log_level = logging.DEBUG if debug else logging.INFO
-    logging.basicConfig(
-        level=log_level,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+
+    # Set log level for non-debug mode (debug mode already configured in callback)
+    if not debug:
+        setup_logging(logging.INFO)
 
     logger.info(f"Starting server with log level: {logging.getLevelName(log_level)}")
     server = CommandServer()
@@ -71,18 +87,8 @@ def list_command(
     host: str | None = typer.Option(
         None, "--host", "-H", help="Server hostname or IP address"
     ),
-    config: Path | None = typer.Option(
-        None, "--config", "-c", help="Path to config file"
-    ),
-    debug: bool = typer.Option(False, "--debug", help="Enable debug logging"),
 ) -> None:
     """List the available USB devices from the server(s)."""
-    if debug:
-        logging.basicConfig(
-            level=logging.DEBUG,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        )
-
     if local:
         logger.debug("Listing local USB devices")
         devices = get_devices()
@@ -98,7 +104,7 @@ def list_command(
             print(device)
     else:
         # Query all servers from config
-        servers = get_servers(config)
+        servers = get_servers()
         if not servers:
             logger.warning("No servers configured, defaulting to localhost")
             servers = ["localhost"]
@@ -124,7 +130,6 @@ def attach_detach(detach: bool = False, **kwargs) -> tuple[UsbDevice, str | None
     """
     args = AttachRequest(detach=detach, **kwargs)
     host = kwargs.get("host")
-    config = kwargs.get("config")
 
     if host:
         # Single server specified
@@ -138,7 +143,7 @@ def attach_detach(detach: bool = False, **kwargs) -> tuple[UsbDevice, str | None
         return device, None
     else:
         # Scan all servers from config
-        servers = get_servers(config)
+        servers = get_servers()
         if not servers:
             logger.warning("No servers configured, defaulting to localhost")
             servers = ["localhost"]
@@ -171,18 +176,8 @@ def attach(
     first: bool = typer.Option(
         False, "--first", "-f", help="Attach the first match if multiple found"
     ),
-    config: Path | None = typer.Option(
-        None, "--config", "-c", help="Path to config file"
-    ),
-    debug: bool = typer.Option(False, "--debug", help="Enable debug logging"),
 ) -> None:
     """Attach a USB device from the server."""
-    if debug:
-        logging.basicConfig(
-            level=logging.DEBUG,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        )
-
     result, server = attach_detach(
         False,
         id=id,
@@ -191,7 +186,6 @@ def attach(
         first=first,
         serial=serial,
         host=host,
-        config=config,
     )
     if server:
         typer.echo(f"Attached to device on {server}:\n{result}")
@@ -217,18 +211,8 @@ def detach(
     first: bool = typer.Option(
         False, "--first", "-f", help="Attach the first match if multiple found"
     ),
-    config: Path | None = typer.Option(
-        None, "--config", "-c", help="Path to config file"
-    ),
-    debug: bool = typer.Option(False, "--debug", help="Enable debug logging"),
 ) -> None:
     """Detach a USB device from the server."""
-    if debug:
-        logging.basicConfig(
-            level=logging.DEBUG,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        )
-
     result, server = attach_detach(
         True,
         id=id,
@@ -237,7 +221,6 @@ def detach(
         first=first,
         serial=serial,
         host=host,
-        config=config,
     )
     if server:
         typer.echo(f"Detached from device on {server}:\n{result}")
@@ -264,7 +247,7 @@ def install_service(
         install_systemd_service(user=user, system_wide=system)
     except RuntimeError as e:
         typer.echo(f"Installation failed: {e}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
@@ -280,7 +263,7 @@ def uninstall_service(
         uninstall_systemd_service(system_wide=system)
     except RuntimeError as e:
         typer.echo(f"Uninstallation failed: {e}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 def main(args: Sequence[str] | None = None) -> None:
