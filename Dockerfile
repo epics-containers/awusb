@@ -2,10 +2,6 @@
 # or docker with user namespaces.
 FROM ghcr.io/diamondlightsource/ubuntu-devcontainer:noble AS developer
 
-# Add any system dependencies for the developer/build environment here
-# RUN apt-get update -y && apt-get install -y --no-install-recommends \
-#     graphviz \
-#     && apt-get dist-clean
 
 # The build stage installs the context into the venv
 FROM developer AS build
@@ -38,6 +34,24 @@ COPY --from=build /python /python
 # Copy the environment, but not the source code
 COPY --from=build /app/.venv /app/.venv
 ENV PATH=/app/.venv/bin:$PATH
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    sudo \
+    busybox \
+    usbutils \
+    linux-tools-generic \
+    kmod \
+    && rm -rf /var/lib/apt/lists/* \
+    && busybox --install -s \
+    # Replace the kernel-version-checking wrapper with the actual usbip binary
+    # This allows usbip to work regardless of host kernel version
+    && USBIP_REAL=$(find /usr/lib/linux-tools* -type f -name usbip | head -1) \
+    && if [ -n "$USBIP_REAL" ]; then \
+         mv /usr/bin/usbip /usr/bin/usbip.wrapper && \
+         cp "$USBIP_REAL" /usr/bin/usbip && \
+         chmod +x /usr/bin/usbip; \
+       fi
+
 
 # change this entrypoint if it is not the same as the repo
 ENTRYPOINT ["awusb"]
