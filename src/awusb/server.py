@@ -1,4 +1,5 @@
 import logging
+import os
 import socket
 import threading
 
@@ -41,13 +42,15 @@ class CommandServer:
         device = get_device(**criteria)
 
         logger.info(f"Unbinding device {device.bus_id}")
-        run_command(["sudo", "usbip", "unbind", "-b", device.bus_id], check=False)
+        # Skip sudo if already root (common in containers)
+        sudo_prefix = [] if os.getuid() == 0 else ["sudo"]
+        run_command([*sudo_prefix, "usbip", "unbind", "-b", device.bus_id], check=False)
 
         if args.detach:
             logger.info(f"Device unbound: {device.bus_id} ({device.description})")
         else:
             logger.info(f"Binding device: {device.bus_id} ({device.description})")
-            run_command(["sudo", "usbip", "bind", "-b", device.bus_id])
+            run_command([*sudo_prefix, "usbip", "bind", "-b", device.bus_id])
         return device
 
     def _send_response(

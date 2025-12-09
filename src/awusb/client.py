@@ -1,4 +1,5 @@
 import logging
+import os
 import socket
 
 from pydantic import TypeAdapter
@@ -182,17 +183,11 @@ def attach_detach_device(
         logger.info(f"Device detached: {device.description}")
     else:
         logger.info(f"Attaching device {device.bus_id} from {server} to local system")
-        run_command(
-            [
-                "sudo",
-                "usbip",
-                "attach",
-                "-r",
-                server,
-                "-b",
-                device.bus_id,
-            ]
-        )
+        # Skip sudo if already root (common in containers)
+        cmd = ["usbip", "attach", "-r", server, "-b", device.bus_id]
+        if os.getuid() != 0:
+            cmd.insert(0, "sudo")
+        run_command(cmd)
         logger.info(f"Device attached: {device.description}")
 
     logger.info(f"Device {action}ed on server {server}: {device.description}")
