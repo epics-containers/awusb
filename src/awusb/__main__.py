@@ -123,6 +123,22 @@ def list_command(
             else:
                 typer.echo("No devices or server unavailable")
 
+@app.command()
+def ports() -> None:
+    """List the local usbip ports in use."""
+    from awusb.port import list_ports
+
+    ports = list_ports()
+    if not ports:
+        typer.echo("No local usbip ports in use.")
+        return
+
+    # for port in ports:
+    #     typer.echo(
+    #         f"Port {port['port']}: {port['devicename']} (BusID: {port['busid']}, "
+    #         f"Status: {port['status']}, Vendor: {port['vendor']}, Product: {port['product']}, "
+    #         f"Remote IP: {port['remote_ip']}, Remote BusID: {port['remote_busid']})"
+    #     )
 
 def attach_detach(detach: bool = False, **kwargs) -> tuple[UsbDevice, str | None]:
     """Attach or detach a USB device from a server.
