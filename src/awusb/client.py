@@ -143,9 +143,7 @@ def attach_detach_device(
     Raises:
         RuntimeError: If device not found or multiple matches found (list mode only)
     """
-    action = "detach" if detach else "attach"
-
-    logger.info(f"Scanning {len(server_hosts)} servers for device to {action}")
+    logger.info(f"Scanning {len(server_hosts)} servers for device to {args.command}")
     matches = []
 
     for server in server_hosts:
@@ -191,5 +189,4 @@ def attach_detach_device(
         run_command(cmd)
         logger.info(f"Device attached: {device.description}")
 
-    logger.info(f"Device {action}ed on server {server}: {device.description}")
     return device, server

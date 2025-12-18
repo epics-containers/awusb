@@ -6,6 +6,7 @@ import threading
 from pydantic import TypeAdapter, ValidationError
 
 from .api import (
+    AnyRequest,
     AttachRequest,
     DetachRequest,
     DeviceRequest,
@@ -78,7 +79,8 @@ class CommandServer:
                 return
 
             # Try to parse as ListRequest, AttachRequest, or DetachRequest
-            request_adapter = TypeAdapter(ListRequest | AttachRequest | DetachRequest)
+            # Use discriminated union for proper parsing based on command field
+            request_adapter = TypeAdapter(AnyRequest)
             try:
                 request = request_adapter.validate_json(data)
                 logger.debug(f"Received request: {request}")

@@ -1,8 +1,8 @@
 """Pydantic models for client-server communication."""
 
-from typing import Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Discriminator
 
 from .usbdevice import UsbDevice
 
@@ -25,6 +25,7 @@ class DeviceRequest(StrictBaseModel):
     Includes search criteria used to identify a device.
     """
 
+    command: Any = None  # To be specified in subclasses
     id: str | None = None
     bus: str | None = None
     serial: str | None = None
@@ -48,6 +49,13 @@ class DetachRequest(DeviceRequest):
     """Request to detach a USB device."""
 
     command: Literal["detach"] = "detach"
+
+
+# Type alias for any request with discriminator
+AnyRequest = Annotated[
+    ListRequest | AttachRequest | DetachRequest | FindRequest,
+    Discriminator("command"),
+]
 
 
 class ListResponse(StrictBaseModel):
