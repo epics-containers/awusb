@@ -7,7 +7,9 @@ from pydantic import TypeAdapter, ValidationError
 
 from .api import (
     AttachRequest,
-    AttachResponse,
+    DetachRequest,
+    DeviceRequest,
+    DeviceResponse,
     ErrorResponse,
     ListRequest,
     ListResponse,
@@ -32,9 +34,10 @@ class CommandServer:
         logger.debug(f"Found {len(result)} USB devices")
         return result
 
-    def handle_attach(
+    def handle_attach_detach(
         self,
-        args: AttachRequest,
+        args: DeviceRequest,
+        detach: bool = False,
     ) -> UsbDevice:
         """Handle the 'attach' command with optional arguments."""
         criteria = args.model_dump(exclude={"command", "detach"})
@@ -46,7 +49,7 @@ class CommandServer:
         sudo_prefix = [] if os.getuid() == 0 else ["sudo"]
         run_command([*sudo_prefix, "usbip", "unbind", "-b", device.bus_id], check=False)
 
-        if args.detach:
+        if detach:
             logger.info(f"Device unbound: {device.bus_id} ({device.description})")
         else:
             logger.info(f"Binding device: {device.bus_id} ({device.description})")
@@ -56,7 +59,7 @@ class CommandServer:
     def _send_response(
         self,
         client_socket: socket.socket,
-        response: ListResponse | AttachResponse | ErrorResponse,
+        response: DeviceResponse | ErrorResponse | ListResponse,
     ):
         """Send a JSON response to the client."""
         client_socket.sendall(response.model_dump_json().encode("utf-8") + b"\n")
@@ -92,10 +95,15 @@ class CommandServer:
                 self._send_response(client_socket, response)
 
             elif isinstance(request, AttachRequest):
-                action = "detach" if request.detach else "attach"
-                logger.info(f"{action.capitalize()} request from {address}: {request}")
-                result = self.handle_attach(args=request)
-                response = AttachResponse(status="success", data=result)
+                logger.info(f"attach request from {address}: {request}")
+                result = self.handle_attach_detach(args=request, detach=False)
+                response = DeviceResponse(status="success", data=result)
+                self._send_response(client_socket, response)
+
+            elif isinstance(request, DetachRequest):
+                logger.info(f"detach request from {address}: {request}")
+                result = self.handle_attach_detach(args=request, detach=True)
+                response = DeviceResponse(status="success", data=result)
                 self._send_response(client_socket, response)
 
         except Exception as e:

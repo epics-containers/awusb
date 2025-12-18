@@ -4,14 +4,14 @@ import socket
 
 from pydantic import TypeAdapter
 
-from .config import get_timeout
 from .api import (
-    AttachRequest,
-    AttachResponse,
+    DeviceRequest,
+    DeviceResponse,
     ErrorResponse,
     ListRequest,
     ListResponse,
 )
+from .config import get_timeout
 from .usbdevice import UsbDevice
 from .utility import run_command
 
@@ -22,12 +22,12 @@ DEFAULT_TIMEOUT = 5.0
 
 
 def send_request(
-    request: ListRequest | AttachRequest,
+    request: ListRequest | DeviceRequest,
     server_host: str = "localhost",
     server_port: int = 5055,
     raise_on_error: bool = True,
     timeout: float | None = DEFAULT_TIMEOUT,
-) -> ListResponse | AttachResponse:
+) -> DeviceResponse:
     """
     Send a request to the server and return the response.
 
@@ -56,14 +56,14 @@ def send_request(
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.settimeout(timeout)
             sock.connect((server_host, server_port))
-            logger.debug(f"Sending request: {request.command}")
+            logger.debug(f"Sending request: {request.__class__.__name__}")
             sock.sendall(request.model_dump_json().encode("utf-8"))
 
             response = sock.recv(4096).decode("utf-8")
             logger.debug("Received response from server")
             # Parse response using TypeAdapter to handle union types
             response_adapter = TypeAdapter(
-                ListResponse | AttachResponse | ErrorResponse
+                ListResponse | DeviceResponse | ErrorResponse
             )
             decoded = response_adapter.validate_json(response)
 
@@ -72,7 +72,7 @@ def send_request(
                     logger.error(f"Server returned error: {decoded.message}")
                 raise RuntimeError(f"Server error: {decoded.message}")
 
-            logger.debug(f"Request successful: {request.command}")
+            logger.debug(f"Request successful: {request.__class__.__name__}")
             return decoded
     except TimeoutError as e:
         msg = f"Connection to {server_host}:{server_port} timed out after {timeout}s"
@@ -117,7 +117,7 @@ def list_devices(
 
 
 def attach_detach_device(
-    args: AttachRequest,
+    args: DeviceRequest,
     server_hosts: list[str],
     server_port: int = 5055,
     detach: bool = False,
@@ -152,7 +152,7 @@ def attach_detach_device(
             response = send_request(
                 args, server, server_port, raise_on_error=False, timeout=timeout
             )
-            assert isinstance(response, AttachResponse)
+            assert isinstance(response, DeviceResponse)
             matches.append((response.data, server))
             logger.debug(f"Match found on {server}: {response.data.description}")
         except RuntimeError as e:

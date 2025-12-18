@@ -13,16 +13,29 @@ class ListRequest(BaseModel):
     command: Literal["list"] = "list"
 
 
-class AttachRequest(BaseModel):
-    """Request to attach a USB device."""
+class DeviceRequest(BaseModel):
+    """
+    A base class for all device-related requests.
+    Includes search criteria used to identify a device.
+    """
 
-    command: Literal["attach"] = "attach"
     id: str | None = None
     bus: str | None = None
     serial: str | None = None
     desc: str | None = None
     first: bool = False
-    detach: bool = False
+
+
+class FindRequest(DeviceRequest):
+    """Request to find a USB device."""
+
+
+class AttachRequest(DeviceRequest):
+    """Request to attach a USB device."""
+
+
+class DetachRequest(DeviceRequest):
+    """Request to detach a USB device."""
 
 
 class ListResponse(BaseModel):
@@ -32,10 +45,10 @@ class ListResponse(BaseModel):
     data: list[UsbDevice]
 
 
-class AttachResponse(BaseModel):
-    """Response to attach request."""
+class DeviceResponse(BaseModel):
+    """Response to find/attach/detach requests."""
 
-    status: Literal["success", "failure"]
+    status: Literal["success"]
     data: UsbDevice
 
 

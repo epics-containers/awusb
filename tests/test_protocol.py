@@ -27,7 +27,6 @@ from unittest.mock import patch
 
 import pytest
 
-from awusb.client import attach_detach_device, list_devices
 from awusb.api import (
     AttachRequest,
     AttachResponse,
@@ -35,6 +34,7 @@ from awusb.api import (
     ListRequest,
     ListResponse,
 )
+from awusb.client import attach_detach_device, list_devices
 from awusb.server import CommandServer
 from awusb.usbdevice import UsbDevice
 

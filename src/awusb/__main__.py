@@ -2,13 +2,13 @@
 
 import logging
 from collections.abc import Sequence
-from typing import cast
 
 import typer
 
 from awusb.port import Port
 
 from . import __version__
+from .api import AttachRequest, DetachRequest
 from .client import attach_detach_device, list_devices
 from .config import (
     DEFAULT_CONFIG_PATH,
@@ -17,10 +17,9 @@ from .config import (
     get_servers,
     save_servers,
 )
-from .api import AttachRequest
 from .server import CommandServer
 from .service import install_systemd_service, uninstall_systemd_service
-from .usbdevice import UsbDevice, get_devices
+from .usbdevice import get_devices
 
 __all__ = ["main"]
 
@@ -141,31 +140,15 @@ def ports() -> None:
         )
 
 
-def attach_detach(detach: bool = False, **kwargs) -> tuple[UsbDevice, str | None]:
-    """Attach or detach a USB device from a server.
-
-    Returns:
-        Tuple of (device, server) where server is None if --host was specified
-    """
-    args = AttachRequest(detach=detach, **kwargs)
-    host = kwargs.get("host")
-
+def _make_host_list(host: str | None) -> list[str]:
+    """Create a list of hosts from a single host or the config."""
     if host:
-        servers = [host]
-    else:
-        servers = get_servers()
+        return [host]
+    servers = get_servers()
     if not servers:
         logger.warning("No servers configured, defaulting to localhost")
         servers = ["localhost"]
-
-    result = attach_detach_device(
-        args=args,
-        server_hosts=servers,
-        server_port=5055,
-        detach=detach,
-    )
-    device, server = cast(tuple[UsbDevice, str], result)
-    return device, server
+    return servers
 
 
 @app.command()
@@ -188,19 +171,22 @@ def attach(
     ),
 ) -> None:
     """Attach a USB device from a server."""
-    result, server = attach_detach(
-        False,
+    hosts = _make_host_list(host)
+    args = AttachRequest(
         id=id,
         bus=bus,
         desc=desc,
         first=first,
         serial=serial,
-        host=host,
     )
-    if server:
-        typer.echo(f"Attached to device on {server}:\n{result}")
-    else:
-        typer.echo(f"Attached to:\n{result}")
+    device, server = attach_detach_device(
+        args=args,
+        server_hosts=hosts,
+        server_port=5055,
+        detach=False,
+    )
+
+    typer.echo(f"Attached to device on {server}:\n{device}")
 
 
 @app.command()
@@ -223,19 +209,22 @@ def detach(
     ),
 ) -> None:
     """Detach a USB device from a server."""
-    result, server = attach_detach(
-        True,
+    hosts = _make_host_list(host)
+    args = DetachRequest(
         id=id,
         bus=bus,
         desc=desc,
         first=first,
         serial=serial,
-        host=host,
     )
-    if server:
-        typer.echo(f"Detached from device on {server}:\n{result}")
-    else:
-        typer.echo(f"Detached from:\n{result}")
+    device, server = attach_detach_device(
+        args=args,
+        server_hosts=hosts,
+        server_port=5055,
+        detach=False,
+    )
+
+    typer.echo(f"Attached to device on {server}:\n{device}")
 
 
 @app.command()
