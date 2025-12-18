@@ -37,10 +37,10 @@ class CommandServer:
         run_command(["sudo", "usbip", "bind", "-b", device.bus_id])
         logger.info(f"Device bound: {device.bus_id} ({device.description})")
 
-    def detach(self, device: UsbDevice):
+    def detach(self, device: UsbDevice, check: bool = True):
         """Detach (unbind) the specified USB device."""
         logger.info(f"Unbinding device: {device.bus_id} ({device.description})")
-        run_command(["sudo", "usbip", "unbind", "-b", device.bus_id])
+        run_command(["sudo", "usbip", "unbind", "-b", device.bus_id], check=check)
         logger.info(f"Device unbound: {device.bus_id} ({device.description})")
 
     def handle_device(
@@ -54,7 +54,7 @@ class CommandServer:
 
         match args.command:
             case "attach":
-                self.detach(device)
+                self.detach(device, check=False)
                 self.attach(device)
             case "detach":
                 self.detach(device)
