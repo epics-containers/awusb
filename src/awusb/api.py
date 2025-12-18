@@ -48,5 +48,5 @@ class DeviceResponse(StrictBaseModel):
 class ErrorResponse(StrictBaseModel):
     """Error response."""
 
-    status: Literal["error"]
+    status: Literal["error", "not_found", "multiple_matches"]
     message: str

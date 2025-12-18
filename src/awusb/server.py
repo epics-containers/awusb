@@ -33,15 +33,15 @@ class CommandServer:
 
     def attach(self, device: UsbDevice):
         """Attach (bind) the specified USB device."""
-        logger.info(f"Attaching device: {device.bus_id} ({device.description})")
+        logger.info(f"Binding device: {device.bus_id} ({device.description})")
         run_command(["sudo", "usbip", "bind", "-b", device.bus_id])
-        logger.info(f"Device attached: {device.bus_id} ({device.description})")
+        logger.info(f"Device bound: {device.bus_id} ({device.description})")
 
     def detach(self, device: UsbDevice):
         """Detach (unbind) the specified USB device."""
-        logger.info(f"Detaching device: {device.bus_id} ({device.description})")
+        logger.info(f"Unbinding device: {device.bus_id} ({device.description})")
         run_command(["sudo", "usbip", "unbind", "-b", device.bus_id])
-        logger.info(f"Device detached: {device.bus_id} ({device.description})")
+        logger.info(f"Device unbound: {device.bus_id} ({device.description})")
 
     def handle_device(
         self,
@@ -54,6 +54,7 @@ class CommandServer:
 
         match args.command:
             case "attach":
+                self.detach(device)
                 self.attach(device)
             case "detach":
                 self.detach(device)
@@ -109,6 +110,7 @@ class CommandServer:
                 self._send_response(client_socket, response)
 
         except Exception as e:
+            logger.error(f"Error handling client {address}: {e}")
             response = ErrorResponse(status="error", message=str(e))
             self._send_response(client_socket, response)
 

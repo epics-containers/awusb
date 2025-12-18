@@ -14,6 +14,17 @@ from .config import get_timeout
 from .usbdevice import UsbDevice
 from .utility import run_command
 
+
+# TODO: the server does not differentiate in its error responses between
+# "not_found" and "multiple_matches" as yet.
+class MultiMatchError(Exception):
+    """Raised when multiple devices match the search criteria."""
+
+
+class DeviceNotFoundError(Exception):
+    """Raised when no device matches the search criteria."""
+
+
 logger = logging.getLogger(__name__)
 
 # Default connection timeout in seconds
@@ -67,12 +78,20 @@ def send_request(
             decoded = response_adapter.validate_json(response)
 
             if isinstance(decoded, ErrorResponse):
-                if raise_on_error:
-                    logger.error(f"Server returned error: {decoded.message}")
-                raise RuntimeError(f"Server error: {decoded.message}")
+                match decoded.status:
+                    case "not_found":
+                        logger.error(f"Device not found: {decoded.message}")
+                        raise DeviceNotFoundError(f"{decoded.message}")
+                    case "multiple_matches":
+                        logger.error(f"Multiple matches: {decoded.message}")
+                        raise MultiMatchError(f"{decoded.message}")
+                    case "error":
+                        logger.error(f"Server returned error: {decoded.message}")
+                        raise RuntimeError(f"Server error: {decoded.message}")
 
             logger.debug(f"Request successful: {request.command}")
             return decoded
+
     except TimeoutError as e:
         msg = f"Connection to {server_host}:{server_port} timed out after {timeout}s"
         logger.warning(msg)
@@ -152,6 +171,10 @@ def device_command(
             assert isinstance(response, DeviceResponse)
             matches.append((response.data, server))
             logger.debug(f"Match found on {server}: {response.data.description}")
+        except MultiMatchError as e:
+            logger.debug(f"Multiple matches on server {server}: {e}")
+            if not args.first:
+                raise RuntimeError(f"Multiple matches on server {server}") from e
         except RuntimeError as e:
             # Server returned an error (no match or multiple matches on this server)
             logger.debug(f"Server {server}: {e}")
