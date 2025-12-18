@@ -77,10 +77,12 @@ class CommandServer:
                 self._send_response(client_socket, response)
                 return
 
-            # Try to parse as either ListRequest or AttachRequest
-            request_adapter = TypeAdapter(ListRequest | AttachRequest)
+            # Try to parse as ListRequest, AttachRequest, or DetachRequest
+            request_adapter = TypeAdapter(ListRequest | AttachRequest | DetachRequest)
             try:
                 request = request_adapter.validate_json(data)
+                logger.debug(f"Received request: {request}")
+
             except ValidationError as e:
                 response = ErrorResponse(
                     status="error", message=f"Invalid request format: {str(e)}"

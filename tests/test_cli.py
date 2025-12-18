@@ -147,7 +147,6 @@ class TestAttachCommand:
             # Verify the call
             call_args = mock_attach.call_args
             assert call_args.kwargs["args"].id == "1234:5678"
-            assert call_args.kwargs["args"].detach is False
 
     def test_attach_with_serial(self, mock_usb_devices):
         """Test attach command with serial number."""
@@ -249,7 +248,6 @@ class TestDetachCommand:
 
             call_args = mock_detach.call_args
             assert call_args.kwargs["args"].id == "1234:5678"
-            assert call_args.kwargs["args"].detach is True
             assert call_args.kwargs["detach"] is True
 
     def test_detach_with_desc(self, mock_usb_devices):

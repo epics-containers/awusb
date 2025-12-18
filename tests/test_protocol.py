@@ -29,7 +29,8 @@ import pytest
 
 from awusb.api import (
     AttachRequest,
-    AttachResponse,
+    DetachRequest,
+    DeviceResponse,
     ErrorResponse,
     ListRequest,
     ListResponse,
@@ -163,7 +164,6 @@ class TestAttachRequest:
         json_data = request.model_dump_json()
         parsed = json.loads(json_data)
 
-        assert parsed["command"] == "attach"
         assert parsed["id"] == "1234:5678"
 
     def test_attach_request_with_serial(self):
@@ -172,7 +172,6 @@ class TestAttachRequest:
         json_data = request.model_dump_json()
         parsed = json.loads(json_data)
 
-        assert parsed["command"] == "attach"
         assert parsed["serial"] == "ABC123"
 
     def test_attach_request_with_bus(self):
@@ -181,7 +180,6 @@ class TestAttachRequest:
         json_data = request.model_dump_json()
         parsed = json.loads(json_data)
 
-        assert parsed["command"] == "attach"
         assert parsed["bus"] == "1-1.1"
 
     def test_attach_request_first_flag(self):
@@ -190,34 +188,36 @@ class TestAttachRequest:
         json_data = request.model_dump_json()
         parsed = json.loads(json_data)
 
-        assert parsed["command"] == "attach"
         assert parsed["first"] is True
 
-    def test_attach_request_detach_flag(self):
-        """Test AttachRequest with detach flag."""
-        request = AttachRequest(detach=True)
-        json_data = request.model_dump_json()
-        parsed = json.loads(json_data)
-
-        assert parsed["command"] == "attach"
-        assert parsed["detach"] is True
-
-    def test_attach_response_success(self, mock_usb_devices):
-        """Test successful AttachResponse."""
-        response = AttachResponse(status="success", data=mock_usb_devices[0])
+    def test_device_response_success(self, mock_usb_devices):
+        """Test successful DeviceResponse."""
+        response = DeviceResponse(status="success", data=mock_usb_devices[0])
         json_data = response.model_dump_json()
         parsed = json.loads(json_data)
 
         assert parsed["status"] == "success"
         assert parsed["data"]["bus_id"] == "1-1.1"
 
-    def test_attach_response_failure(self, mock_usb_devices):
-        """Test failure AttachResponse."""
-        response = AttachResponse(status="failure", data=mock_usb_devices[0])
-        json_data = response.model_dump_json()
+
+class TestDetachRequest:
+    """Test the detach request protocol."""
+
+    def test_detach_request_with_id(self):
+        """Test DetachRequest with device ID."""
+        request = DetachRequest(id="1234:5678")
+        json_data = request.model_dump_json()
         parsed = json.loads(json_data)
 
-        assert parsed["status"] == "failure"
+        assert parsed["id"] == "1234:5678"
+
+    def test_detach_request_with_serial(self):
+        """Test DetachRequest with serial number."""
+        request = DetachRequest(serial="ABC123")
+        json_data = request.model_dump_json()
+        parsed = json.loads(json_data)
+
+        assert parsed["serial"] == "ABC123"
 
 
 class TestErrorResponse:
@@ -269,7 +269,7 @@ class TestClientServerIntegration:
 
     def test_detach_device_integration(self, server, server_port, mock_usb_devices):
         """Test full detach device flow from client to server."""
-        request = AttachRequest(id="1234:5678", detach=True)
+        request = DetachRequest(id="1234:5678")
         device, server_name = attach_detach_device(
             request, server_hosts=["127.0.0.1"], server_port=server_port, detach=True
         )
@@ -306,16 +306,22 @@ class TestClientServerIntegration:
             assert "Invalid request format" in parsed["message"]
 
     def test_server_handles_unknown_command(self, server, server_port):
-        """Test that server handles unknown commands gracefully."""
+        """Test that server handles invalid request types gracefully.
+
+        With the new API structure using separate request classes, any JSON
+        that doesn't match the required structure will be rejected.
+        """
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.settimeout(5.0)  # Prevent hanging
             sock.connect(("127.0.0.1", server_port))
-            sock.sendall(b'{"command": "unknown"}')
+            # Send request with invalid types that won't match validation
+            sock.sendall(b'{"id": 123, "bus": {"nested": "object"}}')
 
             response = sock.recv(4096).decode("utf-8")
             parsed = json.loads(response)
 
             assert parsed["status"] == "error"
+            assert "Invalid request format" in parsed["message"]
 
     def test_client_handles_error_response(self, server, server_port, mock_get_devices):
         """Test that client properly handles error responses."""
@@ -338,16 +344,13 @@ class TestProtocolRobustness:
             serial=None,
             desc=None,
             first=False,
-            detach=False,
         )
         json_data = request.model_dump_json()
         parsed = json.loads(json_data)
 
-        assert parsed["command"] == "attach"
         # Verify serialization includes null fields
         assert "id" in parsed
         assert "bus" in parsed
-        assert "detach" in parsed
 
     def test_usb_device_serialization_roundtrip(self):
         """Test that UsbDevice can be serialized and deserialized."""

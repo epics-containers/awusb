@@ -2,18 +2,24 @@
 
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from .usbdevice import UsbDevice
 
 
-class ListRequest(BaseModel):
+class StrictBaseModel(BaseModel):
+    """Base model with strict validation - no extra fields allowed."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ListRequest(StrictBaseModel):
     """Request to list available USB devices."""
 
     command: Literal["list"] = "list"
 
 
-class DeviceRequest(BaseModel):
+class DeviceRequest(StrictBaseModel):
     """
     A base class for all device-related requests.
     Includes search criteria used to identify a device.
@@ -29,30 +35,36 @@ class DeviceRequest(BaseModel):
 class FindRequest(DeviceRequest):
     """Request to find a USB device."""
 
+    command: Literal["find"] = "find"
+
 
 class AttachRequest(DeviceRequest):
     """Request to attach a USB device."""
+
+    command: Literal["attach"] = "attach"
 
 
 class DetachRequest(DeviceRequest):
     """Request to detach a USB device."""
 
+    command: Literal["detach"] = "detach"
 
-class ListResponse(BaseModel):
+
+class ListResponse(StrictBaseModel):
     """Response containing list of USB devices."""
 
     status: Literal["success"]
     data: list[UsbDevice]
 
 
-class DeviceResponse(BaseModel):
+class DeviceResponse(StrictBaseModel):
     """Response to find/attach/detach requests."""
 
     status: Literal["success"]
     data: UsbDevice
 
 
-class ErrorResponse(BaseModel):
+class ErrorResponse(StrictBaseModel):
     """Error response."""
 
     status: Literal["error"]

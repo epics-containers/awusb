@@ -221,10 +221,10 @@ def detach(
         args=args,
         server_hosts=hosts,
         server_port=5055,
-        detach=False,
+        detach=True,
     )
 
-    typer.echo(f"Attached to device on {server}:\n{device}")
+    typer.echo(f"Detached from device on {server}:\n{device}")
 
 
 @app.command()

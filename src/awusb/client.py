@@ -48,6 +48,7 @@ def send_request(
         OSError: If connection fails
     """
     logger.debug(f"Connecting to server at {server_host}:{server_port}")
+    logger.debug("Request payload: %s", request.model_dump_json())
 
     if timeout is None:
         timeout = get_timeout()
@@ -108,6 +109,7 @@ def list_devices(
             response = send_request(request, server, server_port, timeout=timeout)
             assert isinstance(response, ListResponse)
             results[server] = response.data
+            assert isinstance(response.data, list)
             logger.debug(f"Server {server}: {len(response.data)} devices")
         except Exception as e:
             logger.warning(f"Failed to query server {server}: {e}")
