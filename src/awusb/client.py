@@ -28,15 +28,14 @@ class DeviceNotFoundError(Exception):
 logger = logging.getLogger(__name__)
 
 # Default connection timeout in seconds
-DEFAULT_TIMEOUT = 5.0
+DEFAULT_TIMEOUT = 2.0
 
 
 def send_request(
     request: ListRequest | DeviceRequest,
     server_host: str = "localhost",
     server_port: int = 5055,
-    raise_on_error: bool = True,
-    timeout: float | None = DEFAULT_TIMEOUT,
+    timeout: float | None = None,
 ) -> ListResponse | DeviceResponse:
     """
     Send a request to the server and return the response.
@@ -80,13 +79,13 @@ def send_request(
             if isinstance(decoded, ErrorResponse):
                 match decoded.status:
                     case "not_found":
-                        logger.error(f"Device not found: {decoded.message}")
+                        logger.debug(f"Device not found: {decoded.message}")
                         raise DeviceNotFoundError(f"{decoded.message}")
                     case "multiple_matches":
-                        logger.error(f"Multiple matches: {decoded.message}")
+                        logger.debug(f"Multiple matches: {decoded.message}")
                         raise MultiMatchError(f"{decoded.message}")
                     case "error":
-                        logger.error(f"Server returned error: {decoded.message}")
+                        logger.debug(f"Server returned error: {decoded.message}")
                         raise RuntimeError(f"Server error: {decoded.message}")
 
             logger.debug(f"Request successful: {request.command}")
@@ -134,47 +133,113 @@ def list_devices(
     return results
 
 
-def device_command(
-    args: DeviceRequest,
+def attach_device(bus_id: str, server_host: str) -> None:
+    """
+    Attach a USB device by bus ID from a specific server.
+
+    Args:
+        bus_id: The bus ID of the device to attach
+        server_host: Server hostname or IP address
+        server_port: Server port number
+        timeout: Connection timeout in seconds. If None, uses configured timeout.
+    """
+    logger.debug(f"Asking remote {server_host} to bind {bus_id} to usbip")
+    request = DeviceRequest(
+        command="attach",
+        bus=bus_id,
+    )
+    send_request(request, server_host)
+
+    logger.info(f"Attaching device {bus_id} from {server_host} to local system")
+    run_command(
+        [
+            "sudo",
+            "usbip",
+            "attach",
+            "-r",
+            server_host,
+            "-b",
+            bus_id,
+        ]
+    )
+    logger.info(f"Device attached: {bus_id}")
+
+
+def detach_device(bus_id: str, server_host: str) -> None:
+    """
+    Detach a USB device by bus ID from a specific server.
+
+    Args:
+        bus_id: The bus ID of the device to detach
+        server_host: Server hostname or IP address
+        server_port: Server port number
+        timeout: Connection timeout in seconds. If None, uses configured timeout.
+    """
+
+    logger.info(f"Detaching device {bus_id} from local system")
+    # run_command(["sudo", "usbip", "detach", "-l", bus_id])
+
+    logger.debug(f"Asking remote {server_host} to unbind {bus_id} from usbip")
+    request = DeviceRequest(
+        command="detach",
+        bus=bus_id,
+    )
+    send_request(request, server_host)
+
+    logger.info(f"Device detached: {server_host}:{bus_id}")
+
+
+def find_device(
     server_hosts: list[str],
-    server_port: int = 5055,
-    timeout: float | None = None,
+    id: str | None = None,
+    bus: str | None = None,
+    desc: str | None = None,
+    serial: str | None = None,
+    first: bool = False,
 ) -> tuple[UsbDevice, str]:
     """
-    Request to find/attach/detach a USB device from server(s).
+    Request to find a USB device from server(s). Will only return
+    a single device, or raise an error if multiple matches found.
+
+    If args.first is set, will return the first match found across all
+    servers.
 
     Args:
         args: AttachRequest with device search criteria
         server_hosts: list of server hostnames/IPs
         server_port: Server port number
-        detach: Whether to detach instead of attach
         timeout: Connection timeout in seconds. If None, uses configured timeout.
 
     Returns:
-        If server_hosts is a string: Tuple of (UsbDevice, None)
-        If server_hosts is a list: Tuple of (UsbDevice, server_host)
-            where device was found
+        The UsbDevice and the host where device was found
 
     Raises:
         RuntimeError: If device not found or multiple matches found (list mode only)
     """
 
-    logger.info(f"Scanning {len(server_hosts)} servers for device to {args.command}")
+    logger.info(
+        f"Scanning {len(server_hosts)} for device matching {id}, {bus},"
+        f" {desc}, {serial}, {first}"
+    )
+
+    request = DeviceRequest(
+        command="find",
+        id=id,
+        bus=bus,
+        desc=desc,
+        first=first,
+        serial=serial,
+    )
+
     matches = []
 
     for server in server_hosts:
         try:
             logger.debug(f"Trying server {server}")
-            response = send_request(
-                args, server, server_port, raise_on_error=False, timeout=timeout
-            )
+            response = send_request(request, server)
             assert isinstance(response, DeviceResponse)
             matches.append((response.data, server))
             logger.debug(f"Match found on {server}: {response.data.description}")
-        except MultiMatchError as e:
-            logger.debug(f"Multiple matches on server {server}: {e}")
-            if not args.first:
-                raise RuntimeError(f"Multiple matches on server {server}") from e
         except RuntimeError as e:
             # Server returned an error (no match or multiple matches on this server)
             logger.debug(f"Server {server}: {e}")
@@ -189,7 +254,7 @@ def device_command(
         logger.error(msg)
         raise RuntimeError(msg)
 
-    if len(matches) > 1 and not args.first:
+    if len(matches) > 1 and not request.first:
         device_list = "\n".join(f"  {dev} (on {srv})" for dev, srv in matches)
         msg = (
             f"Multiple devices matched across servers:\n{device_list}\n\n"
@@ -199,18 +264,4 @@ def device_command(
 
     device, server = matches[0]
 
-    if args.command == "attach":
-        logger.info(f"Attaching device {device.bus_id} from {server} to local system")
-        run_command(
-            [
-                "sudo",
-                "usbip",
-                "attach",
-                "-r",
-                server,
-                "-b",
-                device.bus_id,
-            ]
-        )
-        logger.info(f"Device attached: {device.description}")
     return device, server

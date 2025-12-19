@@ -8,8 +8,7 @@ import typer
 from awusb.port import Port
 
 from . import __version__
-from .api import DeviceRequest
-from .client import device_command, list_devices
+from .client import attach_device, detach_device, find_device, list_devices
 from .config import (
     DEFAULT_CONFIG_PATH,
     discover_config_path,
@@ -176,16 +175,16 @@ def attach(
 ) -> None:
     """Attach a USB device from a server."""
 
-    cmd = DeviceRequest(
-        command="attach",
+    device, server = find_device(
+        server_hosts=get_host_list(host),
         id=id,
         bus=bus,
         desc=desc,
         first=first,
         serial=serial,
     )
+    attach_device(device.bus_id, server)
 
-    device, server = device_command(cmd, get_host_list(host))
     typer.echo(f"Attached to device on {server}:\n{device}")
 
 
@@ -210,16 +209,16 @@ def detach(
 ) -> None:
     """Detach a USB device from a server."""
 
-    cmd = DeviceRequest(
-        command="detach",
+    device, server = find_device(
+        server_hosts=get_host_list(host),
         id=id,
         bus=bus,
         desc=desc,
         first=first,
         serial=serial,
     )
+    detach_device(device.bus_id, server)
 
-    device, server = device_command(cmd, get_host_list(host))
     typer.echo(f"Detached from device on {server}:\n{device}")
 
 
@@ -244,16 +243,16 @@ def find(
 ) -> None:
     """Find a USB device on a server."""
 
-    cmd = DeviceRequest(
-        command="find",
+    device, server = find_device(
+        server_hosts=get_host_list(host),
         id=id,
         bus=bus,
         desc=desc,
         first=first,
         serial=serial,
     )
+    detach_device(device.bus_id, server)
 
-    device, server = device_command(cmd, get_host_list(host))
     typer.echo(f"Found device on {server}:\n{device}")
 
 
