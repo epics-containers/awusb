@@ -133,10 +133,13 @@ class TestAttachCommand:
 
     def test_attach_with_id(self, mock_usb_devices):
         """Test attach command with device ID."""
-        with patch(
-            "awusb.__main__.attach_detach_device",
-            return_value=(mock_usb_devices[0], "localhost"),
-        ) as mock_attach:
+        with (
+            patch(
+                "awusb.__main__.find_device",
+                return_value=(mock_usb_devices[0], "localhost"),
+            ) as mock_find,
+            patch("awusb.__main__.attach_device") as mock_attach,
+        ):
             result = runner.invoke(
                 app, ["attach", "--id", "1234:5678", "--host", "localhost"]
             )
@@ -144,85 +147,99 @@ class TestAttachCommand:
             assert "Attached to device on localhost:" in result.stdout
             assert "Test Device 1" in result.stdout
 
-            # Verify the call
-            call_args = mock_attach.call_args
-            assert call_args.kwargs["args"].id == "1234:5678"
-            assert call_args.kwargs["args"].detach is False
+            # Verify the calls
+            assert mock_find.call_args.kwargs["id"] == "1234:5678"
+            assert mock_attach.called
 
     def test_attach_with_serial(self, mock_usb_devices):
         """Test attach command with serial number."""
-        with patch(
-            "awusb.__main__.attach_detach_device",
-            return_value=(mock_usb_devices[0], "localhost"),
-        ) as mock_attach:
+        with (
+            patch(
+                "awusb.__main__.find_device",
+                return_value=(mock_usb_devices[0], "localhost"),
+            ) as mock_find,
+            patch("awusb.__main__.attach_device"),
+        ):
             result = runner.invoke(
                 app, ["attach", "--serial", "ABC123", "--host", "localhost"]
             )
             assert result.exit_code == 0
 
-            call_args = mock_attach.call_args
-            assert call_args.kwargs["args"].serial == "ABC123"
+            call_args = mock_find.call_args
+            assert call_args.kwargs["serial"] == "ABC123"
 
     def test_attach_with_desc(self, mock_usb_devices):
         """Test attach command with description."""
-        with patch(
-            "awusb.__main__.attach_detach_device",
-            return_value=(mock_usb_devices[0], "localhost"),
-        ) as mock_attach:
+        with (
+            patch(
+                "awusb.__main__.find_device",
+                return_value=(mock_usb_devices[0], "localhost"),
+            ) as mock_find,
+            patch("awusb.__main__.attach_device"),
+        ):
             result = runner.invoke(
                 app, ["attach", "--desc", "Test", "--host", "localhost"]
             )
             assert result.exit_code == 0
 
-            call_args = mock_attach.call_args
-            assert call_args.kwargs["args"].desc == "Test"
+            call_args = mock_find.call_args
+            assert call_args.kwargs["desc"] == "Test"
 
     def test_attach_with_bus(self, mock_usb_devices):
         """Test attach command with bus ID."""
-        with patch(
-            "awusb.__main__.attach_detach_device",
-            return_value=(mock_usb_devices[0], "localhost"),
-        ) as mock_attach:
+        with (
+            patch(
+                "awusb.__main__.find_device",
+                return_value=(mock_usb_devices[0], "localhost"),
+            ) as mock_find,
+            patch("awusb.__main__.attach_device"),
+        ):
             result = runner.invoke(
                 app, ["attach", "--bus", "1-1.1", "--host", "localhost"]
             )
             assert result.exit_code == 0
 
-            call_args = mock_attach.call_args
-            assert call_args.kwargs["args"].bus == "1-1.1"
+            call_args = mock_find.call_args
+            assert call_args.kwargs["bus"] == "1-1.1"
 
     def test_attach_with_first_flag(self, mock_usb_devices):
         """Test attach command with first flag."""
-        with patch(
-            "awusb.__main__.attach_detach_device",
-            return_value=(mock_usb_devices[0], "localhost"),
-        ) as mock_attach:
+        with (
+            patch(
+                "awusb.__main__.find_device",
+                return_value=(mock_usb_devices[0], "localhost"),
+            ) as mock_find,
+            patch("awusb.__main__.attach_device"),
+        ):
             result = runner.invoke(
                 app, ["attach", "--desc", "Test", "--first", "--host", "localhost"]
             )
             assert result.exit_code == 0
 
-            call_args = mock_attach.call_args
-            assert call_args.kwargs["args"].first is True
+            call_args = mock_find.call_args
+            assert call_args.kwargs["first"] is True
 
     def test_attach_with_host(self, mock_usb_devices):
         """Test attach command with custom host."""
-        with patch(
-            "awusb.__main__.attach_detach_device",
-            return_value=(mock_usb_devices[0], "raspberrypi"),
-        ) as mock_attach:
+        with (
+            patch(
+                "awusb.__main__.find_device",
+                return_value=(mock_usb_devices[0], "raspberrypi"),
+            ) as mock_find,
+            patch("awusb.__main__.attach_device"),
+        ):
             result = runner.invoke(
                 app, ["attach", "--id", "1234:5678", "--host", "raspberrypi"]
             )
             assert result.exit_code == 0
 
-            call_args = mock_attach.call_args
+            call_args = mock_find.call_args
             assert call_args.kwargs["server_hosts"] == ["raspberrypi"]
 
     def test_attach_error_handling(self):
         """Test attach command error handling."""
         with patch(
-            "awusb.__main__.attach_detach_device",
+            "awusb.__main__.find_device",
             side_effect=RuntimeError("Device not found"),
         ):
             result = runner.invoke(app, ["attach", "--id", "9999:9999"])
@@ -237,53 +254,61 @@ class TestDetachCommand:
 
     def test_detach_with_id(self, mock_usb_devices):
         """Test detach command with device ID."""
-        with patch(
-            "awusb.__main__.attach_detach_device",
-            return_value=(mock_usb_devices[0], "localhost"),
-        ) as mock_detach:
+        with (
+            patch(
+                "awusb.__main__.find_device",
+                return_value=(mock_usb_devices[0], "localhost"),
+            ) as mock_find,
+            patch("awusb.__main__.detach_device") as mock_detach,
+        ):
             result = runner.invoke(
                 app, ["detach", "--id", "1234:5678", "--host", "localhost"]
             )
             assert result.exit_code == 0
             assert "Detached from device on localhost:" in result.stdout
 
-            call_args = mock_detach.call_args
-            assert call_args.kwargs["args"].id == "1234:5678"
-            assert call_args.kwargs["args"].detach is True
-            assert call_args.kwargs["detach"] is True
+            call_args = mock_find.call_args
+            assert call_args.kwargs["id"] == "1234:5678"
+            assert mock_detach.called
 
     def test_detach_with_desc(self, mock_usb_devices):
         """Test detach command with description."""
-        with patch(
-            "awusb.__main__.attach_detach_device",
-            return_value=(mock_usb_devices[0], "localhost"),
-        ) as mock_detach:
+        with (
+            patch(
+                "awusb.__main__.find_device",
+                return_value=(mock_usb_devices[0], "localhost"),
+            ) as mock_find,
+            patch("awusb.__main__.detach_device"),
+        ):
             result = runner.invoke(
                 app, ["detach", "--desc", "Camera", "--host", "localhost"]
             )
             assert result.exit_code == 0
 
-            call_args = mock_detach.call_args
-            assert call_args.kwargs["args"].desc == "Camera"
+            call_args = mock_find.call_args
+            assert call_args.kwargs["desc"] == "Camera"
 
     def test_detach_with_host(self, mock_usb_devices):
         """Test detach command with custom host."""
-        with patch(
-            "awusb.__main__.attach_detach_device",
-            return_value=(mock_usb_devices[0], "raspberrypi"),
-        ) as mock_detach:
+        with (
+            patch(
+                "awusb.__main__.find_device",
+                return_value=(mock_usb_devices[0], "raspberrypi"),
+            ) as mock_find,
+            patch("awusb.__main__.detach_device"),
+        ):
             result = runner.invoke(
                 app, ["detach", "--id", "1234:5678", "--host", "raspberrypi"]
             )
             assert result.exit_code == 0
 
-            call_args = mock_detach.call_args
+            call_args = mock_find.call_args
             assert call_args.kwargs["server_hosts"] == ["raspberrypi"]
 
     def test_detach_error_handling(self):
         """Test detach command error handling."""
         with patch(
-            "awusb.__main__.attach_detach_device",
+            "awusb.__main__.find_device",
             side_effect=RuntimeError("Device not attached"),
         ):
             result = runner.invoke(app, ["detach", "--id", "1234:5678"])
@@ -302,9 +327,10 @@ class TestMultiServerOperations:
         with (
             patch("awusb.__main__.get_servers", return_value=servers),
             patch(
-                "awusb.__main__.attach_detach_device",
+                "awusb.__main__.find_device",
                 return_value=(mock_usb_devices[0], "server2"),
             ),
+            patch("awusb.__main__.attach_device"),
         ):
             result = runner.invoke(app, ["attach", "--id", "1234:5678"])
             assert result.exit_code == 0
@@ -317,9 +343,10 @@ class TestMultiServerOperations:
         with (
             patch("awusb.__main__.get_servers", return_value=servers),
             patch(
-                "awusb.__main__.attach_detach_device",
+                "awusb.__main__.find_device",
                 return_value=(mock_usb_devices[0], "server1"),
             ),
+            patch("awusb.__main__.detach_device"),
         ):
             result = runner.invoke(app, ["detach", "--desc", "Camera"])
             assert result.exit_code == 0
@@ -331,7 +358,7 @@ class TestMultiServerOperations:
         with (
             patch("awusb.__main__.get_servers", return_value=servers),
             patch(
-                "awusb.__main__.attach_detach_device",
+                "awusb.__main__.find_device",
                 side_effect=RuntimeError(
                     "Multiple devices matched across servers: Test Device on server1, "
                     "Test Device on server2. Use --first to attach the first match."
@@ -348,9 +375,10 @@ class TestMultiServerOperations:
         with (
             patch("awusb.__main__.get_servers", return_value=servers),
             patch(
-                "awusb.__main__.attach_detach_device",
+                "awusb.__main__.find_device",
                 return_value=(mock_usb_devices[0], "server1"),
             ),
+            patch("awusb.__main__.attach_device"),
         ):
             result = runner.invoke(app, ["attach", "--desc", "Camera", "--first"])
             assert result.exit_code == 0
@@ -362,7 +390,7 @@ class TestMultiServerOperations:
         with (
             patch("awusb.__main__.get_servers", return_value=servers),
             patch(
-                "awusb.__main__.attach_detach_device",
+                "awusb.__main__.find_device",
                 side_effect=RuntimeError("No matching device found across 2 servers"),
             ),
         ):

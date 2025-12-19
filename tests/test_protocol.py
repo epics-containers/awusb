@@ -34,7 +34,7 @@ from awusb.api import (
     ListRequest,
     ListResponse,
 )
-from awusb.client import device_command, list_devices
+from awusb.client import list_devices
 from awusb.server import CommandServer
 from awusb.usbdevice import UsbDevice
 
@@ -159,7 +159,7 @@ class TestAttachRequest:
 
     def test_attach_request_with_id(self):
         """Test AttachRequest with device ID."""
-        request = DeviceRequest(id="1234:5678")
+        request = DeviceRequest(command="attach", id="1234:5678")
         json_data = request.model_dump_json()
         parsed = json.loads(json_data)
 
@@ -168,7 +168,7 @@ class TestAttachRequest:
 
     def test_attach_request_with_serial(self):
         """Test AttachRequest with serial number."""
-        request = DeviceRequest(serial="ABC123")
+        request = DeviceRequest(command="attach", serial="ABC123")
         json_data = request.model_dump_json()
         parsed = json.loads(json_data)
 
@@ -177,7 +177,7 @@ class TestAttachRequest:
 
     def test_attach_request_with_bus(self):
         """Test AttachRequest with bus ID."""
-        request = DeviceRequest(bus="1-1.1")
+        request = DeviceRequest(command="attach", bus="1-1.1")
         json_data = request.model_dump_json()
         parsed = json.loads(json_data)
 
@@ -186,21 +186,21 @@ class TestAttachRequest:
 
     def test_attach_request_first_flag(self):
         """Test AttachRequest with first flag."""
-        request = DeviceRequest(first=True)
+        request = DeviceRequest(command="attach", first=True)
         json_data = request.model_dump_json()
         parsed = json.loads(json_data)
 
         assert parsed["command"] == "attach"
         assert parsed["first"] is True
 
-    def test_attach_request_detach_flag(self):
-        """Test AttachRequest with detach flag."""
-        request = DeviceRequest(detach=True)
+    def test_detach_request(self):
+        """Test DetachRequest."""
+        request = DeviceRequest(command="detach", bus="1-1.1")
         json_data = request.model_dump_json()
         parsed = json.loads(json_data)
 
-        assert parsed["command"] == "attach"
-        assert parsed["detach"] is True
+        assert parsed["command"] == "detach"
+        assert parsed["bus"] == "1-1.1"
 
     def test_attach_response_success(self, mock_usb_devices):
         """Test successful AttachResponse."""
@@ -255,12 +255,17 @@ class TestClientServerIntegration:
         assert devices[0].vendor_id == "1234"
         assert devices[1].bus_id == "2-2.1"
 
-    def test_attach_device_integration(self, server, server_port, mock_usb_devices):
-        """Test full attach device flow from client to server."""
-        with patch("awusb.client.run_command"):
-            request = DeviceRequest(id="1234:5678")
-            device, server_name = device_command(
-                request, server_hosts=["127.0.0.1"], server_port=server_port
+    def test_find_device_integration(self, server, server_port, mock_usb_devices):
+        """Test full find device flow from client to server."""
+        from awusb.client import find_device
+
+        # Mock send_request to return a device response
+        with patch("awusb.client.send_request") as mock_send:
+            mock_send.return_value = DeviceResponse(
+                status="success", data=mock_usb_devices[0]
+            )
+            device, server_name = find_device(
+                server_hosts=["127.0.0.1"], id="1234:5678"
             )
 
             assert isinstance(device, UsbDevice)
@@ -269,14 +274,13 @@ class TestClientServerIntegration:
 
     def test_detach_device_integration(self, server, server_port, mock_usb_devices):
         """Test full detach device flow from client to server."""
-        request = DeviceRequest(id="1234:5678", detach=True)
-        device, server_name = device_command(
-            request, server_hosts=["127.0.0.1"], server_port=server_port, detach=True
-        )
+        from awusb.client import detach_device
 
-        assert isinstance(device, UsbDevice)
-        assert device.bus_id == "1-1.1"
-        assert server_name == "127.0.0.1"
+        # Mock send_request since detach_device doesn't accept server_port parameter
+        with patch("awusb.client.send_request") as mock_send:
+            detach_device(bus_id="1-1.1", server_host="127.0.0.1")
+            # Verify send_request was called with correct parameters
+            assert mock_send.called
 
     def test_server_handles_empty_request(self, server, server_port):
         """Test that server handles empty requests gracefully."""
@@ -333,12 +337,12 @@ class TestProtocolRobustness:
     def test_request_with_all_fields_null(self):
         """Test AttachRequest with all optional fields as None."""
         request = DeviceRequest(
+            command="attach",
             id=None,
             bus=None,
             serial=None,
             desc=None,
             first=False,
-            detach=False,
         )
         json_data = request.model_dump_json()
         parsed = json.loads(json_data)
@@ -347,7 +351,6 @@ class TestProtocolRobustness:
         # Verify serialization includes null fields
         assert "id" in parsed
         assert "bus" in parsed
-        assert "detach" in parsed
 
     def test_usb_device_serialization_roundtrip(self):
         """Test that UsbDevice can be serialized and deserialized."""

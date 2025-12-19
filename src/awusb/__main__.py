@@ -251,7 +251,6 @@ def find(
         first=first,
         serial=serial,
     )
-    detach_device(device.bus_id, server)
 
     typer.echo(f"Found device on {server}:\n{device}")
 

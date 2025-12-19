@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from .usbdevice import UsbDevice
 
@@ -10,8 +10,7 @@ from .usbdevice import UsbDevice
 class StrictBaseModel(BaseModel):
     """Base model with strict validation - no extra fields allowed."""
 
-    class Config:
-        extra = "forbid"
+    model_config = ConfigDict(extra="forbid")
 
 
 class ListRequest(StrictBaseModel):
