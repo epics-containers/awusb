@@ -11,6 +11,7 @@ from .api import (
     ListResponse,
 )
 from .config import get_timeout
+from .port import Port
 from .usbdevice import UsbDevice
 from .utility import run_command
 
@@ -133,6 +134,24 @@ def list_devices(
     return results
 
 
+def detach_local_device(bus_id: str, server_host: str) -> None:
+    """
+    Find a local usbip port by remote bus ID and server, then detach it.
+
+    Args:
+        bus_id: The remote bus ID of the device to detach
+        server_host: The server hostname or IP address
+    """
+    try:
+        port = Port.get_port_by_remote_busid(bus_id, server_host)
+        if port is not None:
+            logger.info(f"Found local port {port.port} for device {bus_id}, detaching")
+            run_command(["sudo", "usbip", "detach", "-p", port.port])
+    except Exception as e:
+        print(e)
+        logger.warning(f"Failed to detach device {bus_id} locally: {e}")
+
+
 def attach_device(bus_id: str, server_host: str) -> None:
     """
     Attach a USB device by bus ID from a specific server.
@@ -143,6 +162,12 @@ def attach_device(bus_id: str, server_host: str) -> None:
         server_port: Server port number
         timeout: Connection timeout in seconds. If None, uses configured timeout.
     """
+
+    # occasionally if a remote server has been restarted, the local port
+    # may still be attached even though the remote device is gone -
+    # try to detach it first to be safe
+    detach_local_device(bus_id, server_host)
+
     logger.debug(f"Asking remote {server_host} to bind {bus_id} to usbip")
     request = DeviceRequest(
         command="attach",
@@ -175,9 +200,7 @@ def detach_device(bus_id: str, server_host: str) -> None:
         server_port: Server port number
         timeout: Connection timeout in seconds. If None, uses configured timeout.
     """
-
-    logger.info(f"Detaching device {bus_id} from local system")
-    # run_command(["sudo", "usbip", "detach", "-l", bus_id])
+    detach_local_device(bus_id, server_host)
 
     logger.debug(f"Asking remote {server_host} to unbind {bus_id} from usbip")
     request = DeviceRequest(

@@ -61,7 +61,7 @@ class Port:
         return ports
 
     @classmethod
-    def get_port_by_remote_busid(cls, server: str, remote_busid: str) -> "Port | None":
+    def get_port_by_remote_busid(cls, remote_busid: str, server: str) -> "Port | None":
         """Get a Port object by its remote busid.
 
         Args:
