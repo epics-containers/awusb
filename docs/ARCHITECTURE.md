@@ -236,7 +236,7 @@ Protocol:
 ### Configuration Model
 
 ```python
-class AwusbConfig(BaseModel):
+class UsbRemoteConfig(BaseModel):
     servers: list[str] = []
     timeout: float = Field(default=5.0, gt=0)
 ```
