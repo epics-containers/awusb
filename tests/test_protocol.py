@@ -405,3 +405,88 @@ class TestProtocolRobustness:
         restored = UsbDevice.model_validate_json(json_data)
 
         assert restored.serial is None
+
+
+class TestErrorDifferentiation:
+    """Test that server properly differentiates between error types."""
+
+    def test_not_found_error_response(self):
+        """Test that ErrorResponse handles not_found status."""
+        response = ErrorResponse(
+            status="not_found", message="No matching USB device found."
+        )
+        json_data = response.model_dump_json()
+        parsed = json.loads(json_data)
+
+        assert parsed["status"] == "not_found"
+        assert parsed["message"] == "No matching USB device found."
+
+    def test_multiple_matches_error_response(self):
+        """Test that ErrorResponse handles multiple_matches status."""
+        response = ErrorResponse(
+            status="multiple_matches",
+            message="Multiple matching USB devices found. Please refine your criteria.",
+        )
+        json_data = response.model_dump_json()
+        parsed = json.loads(json_data)
+
+        assert parsed["status"] == "multiple_matches"
+        assert "Multiple matching" in parsed["message"]
+
+    def test_server_returns_not_found(self, server_port):
+        """Test that server returns not_found error when device doesn't exist."""
+        from usb_remote.client import DeviceNotFoundError, send_request
+        from usb_remote.server import CommandServer
+
+        # Start a test server with empty device list
+        with patch("usb_remote.server.get_devices", return_value=[]):
+            server = CommandServer(host="127.0.0.1", port=server_port)
+            server_thread = threading.Thread(target=server.start, daemon=True)
+            server_thread.start()
+            time.sleep(0.5)  # Wait for server to start
+
+            try:
+                # Send a find request that won't match anything
+                request = DeviceRequest(
+                    command="find",
+                    id="9999:9999",  # Non-existent device
+                )
+
+                # Should raise DeviceNotFoundError
+                with pytest.raises(DeviceNotFoundError, match="No matching"):
+                    send_request(request, "127.0.0.1", server_port)
+
+            finally:
+                server.stop()
+
+    def test_server_returns_multiple_matches(self, server_port, mock_usb_devices):
+        """Test that server returns multiple_matches error when
+        criteria match multiple devices."""
+        from usb_remote.client import MultipleDevicesError, send_request
+        from usb_remote.server import CommandServer
+
+        # Create mock get_device that raises MultipleDevicesError
+        def mock_get_device(**kwargs):
+            from usb_remote.usbdevice import MultipleDevicesError
+
+            raise MultipleDevicesError("Multiple matching USB devices found.")
+
+        with (
+            patch("usb_remote.server.get_devices", return_value=mock_usb_devices),
+            patch("usb_remote.server.get_device", side_effect=mock_get_device),
+        ):
+            server = CommandServer(host="127.0.0.1", port=server_port)
+            server_thread = threading.Thread(target=server.start, daemon=True)
+            server_thread.start()
+            time.sleep(0.5)  # Wait for server to start
+
+            try:
+                # Send a find request that matches multiple devices
+                request = DeviceRequest(command="find", desc="Test")
+
+                # Should raise MultipleDevicesError
+                with pytest.raises(MultipleDevicesError, match="Multiple matching"):
+                    send_request(request, "127.0.0.1", server_port)
+
+            finally:
+                server.stop()

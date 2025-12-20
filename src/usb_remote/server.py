@@ -11,7 +11,13 @@ from .api import (
     ListRequest,
     ListResponse,
 )
-from .usbdevice import UsbDevice, get_device, get_devices
+from .usbdevice import (
+    DeviceNotFoundError,
+    MultipleDevicesError,
+    UsbDevice,
+    get_device,
+    get_devices,
+)
 from .utility import run_command
 
 logger = logging.getLogger(__name__)
@@ -109,6 +115,14 @@ class CommandServer:
                 response = DeviceResponse(status="success", data=result)
                 self._send_response(client_socket, response)
 
+        except DeviceNotFoundError as e:
+            logger.warning(f"Device not found for client {address}: {e}")
+            response = ErrorResponse(status="not_found", message=str(e))
+            self._send_response(client_socket, response)
+        except MultipleDevicesError as e:
+            logger.warning(f"Multiple devices matched for client {address}: {e}")
+            response = ErrorResponse(status="multiple_matches", message=str(e))
+            self._send_response(client_socket, response)
         except Exception as e:
             logger.error(f"Error handling client {address}: {e}")
             response = ErrorResponse(status="error", message=str(e))
