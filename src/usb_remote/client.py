@@ -12,19 +12,8 @@ from .api import (
 )
 from .config import get_timeout
 from .port import Port
-from .usbdevice import UsbDevice
+from .usbdevice import DeviceNotFoundError, MultipleDevicesError, UsbDevice
 from .utility import run_command
-
-
-# TODO: the server does not differentiate in its error responses between
-# "not_found" and "multiple_matches" as yet.
-class MultiMatchError(Exception):
-    """Raised when multiple devices match the search criteria."""
-
-
-class DeviceNotFoundError(Exception):
-    """Raised when no device matches the search criteria."""
-
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +73,7 @@ def send_request(
                         raise DeviceNotFoundError(f"{decoded.message}")
                     case "multiple_matches":
                         logger.debug(f"Multiple matches: {decoded.message}")
-                        raise MultiMatchError(f"{decoded.message}")
+                        raise MultipleDevicesError(f"{decoded.message}")
                     case "error":
                         logger.debug(f"Server returned error: {decoded.message}")
                         raise RuntimeError(f"Server error: {decoded.message}")
@@ -263,9 +252,13 @@ def find_device(
             assert isinstance(response, DeviceResponse)
             matches.append((response.data, server))
             logger.debug(f"Match found on {server}: {response.data.description}")
-        except RuntimeError as e:
-            # Server returned an error (no match or multiple matches on this server)
+        except (DeviceNotFoundError, MultipleDevicesError) as e:
+            # Server returned a specific device error (no match or multiple matches)
             logger.debug(f"Server {server}: {e}")
+            continue
+        except RuntimeError as e:
+            # Server returned a generic error
+            logger.debug(f"Server {server} error: {e}")
             continue
         except Exception as e:
             # Connection or other error
@@ -275,7 +268,7 @@ def find_device(
     if len(matches) == 0:
         msg = f"No matching device found across {len(server_hosts)} servers"
         logger.error(msg)
-        raise RuntimeError(msg)
+        raise DeviceNotFoundError(msg)
 
     if len(matches) > 1 and not request.first:
         device_list = "\n".join(f"  {dev} (on {srv})" for dev, srv in matches)
@@ -283,7 +276,7 @@ def find_device(
             f"Multiple devices matched across servers:\n{device_list}\n\n"
             "Use --first to attach the first match."
         )
-        raise RuntimeError(msg)
+        raise MultipleDevicesError(msg)
 
     device, server = matches[0]
 

@@ -7,6 +7,14 @@ from pydantic import BaseModel, Field
 from usb_remote.utility import run_command
 
 
+class DeviceNotFoundError(Exception):
+    """Raised when no USB device matches the search criteria."""
+
+
+class MultipleDevicesError(Exception):
+    """Raised when multiple USB devices match the search criteria."""
+
+
 class UsbDevice(BaseModel):
     """Pydantic model representing a USB device."""
 
@@ -146,14 +154,19 @@ def get_device(
         filtered_devices.append(device)
 
     if not filtered_devices:
-        raise ValueError("No matching USB device found.")
+        raise DeviceNotFoundError("No matching USB device found.")
 
     if first:
         return filtered_devices[0]
 
     if len(filtered_devices) > 1:
-        raise ValueError(
-            "Multiple matching USB devices found. Please refine your criteria."
+        device_list = "\n".join(
+            f"  - {d.description} (id={d.vendor_id}:{d.product_id}, bus={d.bus_id})"
+            for d in filtered_devices
+        )
+        raise MultipleDevicesError(
+            f"Multiple matching USB devices found. Please refine your criteria.\n"
+            f"Matching devices:\n{device_list}"
         )
 
     return filtered_devices[0]
