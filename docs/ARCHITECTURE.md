@@ -10,7 +10,7 @@ It intentionaly provides no security features, relying on network-level security
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         USB_REMOTE Architecture                      │
+│                         USB_REMOTE Architecture                 │
 └─────────────────────────────────────────────────────────────────┘
 
 ┌──────────────┐                                  ┌──────────────┐
