@@ -268,7 +268,7 @@ def find_device(
     if len(matches) == 0:
         msg = f"No matching device found across {len(server_hosts)} servers"
         logger.error(msg)
-        raise DeviceNotFoundError(msg)
+        exit(1)
 
     if len(matches) > 1 and not request.first:
         device_list = "\n".join(f"  {dev} (on {srv})" for dev, srv in matches)
