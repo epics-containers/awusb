@@ -2,16 +2,6 @@
 
 This guide will help you get started with USB_REMOTE, from installation to sharing your first USB device over the network.
 
-## Table of Contents
-
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [First-Time Setup](#first-time-setup)
-- [Server Setup](#server-setup)
-- [Client Setup](#client-setup)
-- [Your First Device Share](#your-first-device-share)
-- [Next Steps](#next-steps)
-
 ## Prerequisites
 
 ### Server Requirements
@@ -378,17 +368,9 @@ sudo systemctl status usb-remote.service
 
 ## Common Issues
 
-See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for detailed troubleshooting steps.
-
 **Quick fixes:**
 
 - **"Permission denied" errors**: Run with `sudo` or add your user to appropriate groups
 - **Connection timeouts**: Check firewall, increase timeout in config
 - **Device not found**: Verify server is running, check network connectivity
 - **Multiple matches**: Use more specific criteria (`--serial` instead of `--desc`)
-
-## Getting Help
-
-- Documentation: See `docs/` directory
-- Issues: <https://github.com/epics-containers/usb-remote/issues>
-- Security: See [SECURITY.md](SECURITY.md)
