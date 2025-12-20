@@ -2,14 +2,13 @@
 
 import logging
 from collections.abc import Sequence
-from typing import cast
 
 import typer
 
 from awusb.port import Port
 
 from . import __version__
-from .client import attach_detach_device, list_devices
+from .client import attach_device, detach_device, find_device, list_devices
 from .config import (
     DEFAULT_CONFIG_PATH,
     discover_config_path,
@@ -17,10 +16,9 @@ from .config import (
     get_servers,
     save_servers,
 )
-from .models import AttachRequest
 from .server import CommandServer
 from .service import install_systemd_service, uninstall_systemd_service
-from .usbdevice import UsbDevice, get_devices
+from .usbdevice import get_devices
 
 __all__ = ["main"]
 
@@ -96,7 +94,10 @@ def server(
     if not debug:
         setup_logging(logging.INFO)
 
-    logger.info(f"Starting server with log level: {logging.getLevelName(log_level)}")
+    logger.info(
+        f"Starting server {__version__} with log level: "
+        f"{logging.getLevelName(log_level)}"
+    )
     server = CommandServer()
     server.start()
 
@@ -141,15 +142,8 @@ def list_command(
                 typer.echo("No devices or server unavailable")
 
 
-def attach_detach(detach: bool = False, **kwargs) -> tuple[UsbDevice, str | None]:
-    """Attach or detach a USB device from a server.
-
-    Returns:
-        Tuple of (device, server) where server is None if --host was specified
-    """
-    args = AttachRequest(detach=detach, **kwargs)
-    host = kwargs.get("host")
-
+def get_host_list(host: str | None) -> list[str]:
+    """Get list of server hosts from argument or config."""
     if host:
         servers = [host]
     else:
@@ -157,15 +151,7 @@ def attach_detach(detach: bool = False, **kwargs) -> tuple[UsbDevice, str | None
     if not servers:
         logger.warning("No servers configured, defaulting to localhost")
         servers = ["localhost"]
-
-    result = attach_detach_device(
-        args=args,
-        server_hosts=servers,
-        server_port=5055,
-        detach=detach,
-    )
-    device, server = cast(tuple[UsbDevice, str], result)
-    return device, server
+    return servers
 
 
 @app.command()
@@ -188,19 +174,18 @@ def attach(
     ),
 ) -> None:
     """Attach a USB device from a server."""
-    result, server = attach_detach(
-        False,
+
+    device, server = find_device(
+        server_hosts=get_host_list(host),
         id=id,
         bus=bus,
         desc=desc,
         first=first,
         serial=serial,
-        host=host,
     )
-    if server:
-        typer.echo(f"Attached to device on {server}:\n{result}")
-    else:
-        typer.echo(f"Attached to:\n{result}")
+    attach_device(device.bus_id, server)
+
+    typer.echo(f"Attached to device on {server}:\n{device}")
 
 
 @app.command()
@@ -223,19 +208,51 @@ def detach(
     ),
 ) -> None:
     """Detach a USB device from a server."""
-    result, server = attach_detach(
-        True,
+
+    device, server = find_device(
+        server_hosts=get_host_list(host),
         id=id,
         bus=bus,
         desc=desc,
         first=first,
         serial=serial,
-        host=host,
     )
-    if server:
-        typer.echo(f"Detached from device on {server}:\n{result}")
-    else:
-        typer.echo(f"Detached from:\n{result}")
+    detach_device(device.bus_id, server)
+
+    typer.echo(f"Detached from device on {server}:\n{device}")
+
+
+@app.command()
+def find(
+    id: str | None = typer.Option(None, "--id", "-d", help="Device ID e.g. 0bda:5400"),
+    serial: str | None = typer.Option(
+        None, "--serial", "-s", help="Device serial number"
+    ),
+    desc: str | None = typer.Option(
+        None, "--desc", help="Device description substring"
+    ),
+    host: str | None = typer.Option(
+        None, "--host", "-H", help="Server hostname or IP address"
+    ),
+    bus: str | None = typer.Option(
+        None, "--bus", "-b", help="Device bus ID e.g. 1-2.3.4"
+    ),
+    first: bool = typer.Option(
+        False, "--first", "-f", help="Attach the first match if multiple found"
+    ),
+) -> None:
+    """Find a USB device on a server."""
+
+    device, server = find_device(
+        server_hosts=get_host_list(host),
+        id=id,
+        bus=bus,
+        desc=desc,
+        first=first,
+        serial=serial,
+    )
+
+    typer.echo(f"Found device on {server}:\n{device}")
 
 
 @app.command()

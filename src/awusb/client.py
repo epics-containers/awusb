@@ -3,30 +3,41 @@ import socket
 
 from pydantic import TypeAdapter
 
-from .config import get_timeout
-from .models import (
-    AttachRequest,
-    AttachResponse,
+from .api import (
+    DeviceRequest,
+    DeviceResponse,
     ErrorResponse,
     ListRequest,
     ListResponse,
 )
+from .config import get_timeout
+from .port import Port
 from .usbdevice import UsbDevice
 from .utility import run_command
+
+
+# TODO: the server does not differentiate in its error responses between
+# "not_found" and "multiple_matches" as yet.
+class MultiMatchError(Exception):
+    """Raised when multiple devices match the search criteria."""
+
+
+class DeviceNotFoundError(Exception):
+    """Raised when no device matches the search criteria."""
+
 
 logger = logging.getLogger(__name__)
 
 # Default connection timeout in seconds
-DEFAULT_TIMEOUT = 5.0
+DEFAULT_TIMEOUT = 2.0
 
 
 def send_request(
-    request: ListRequest | AttachRequest,
+    request: ListRequest | DeviceRequest,
     server_host: str = "localhost",
     server_port: int = 5055,
-    raise_on_error: bool = True,
-    timeout: float | None = DEFAULT_TIMEOUT,
-) -> ListResponse | AttachResponse:
+    timeout: float | None = None,
+) -> ListResponse | DeviceResponse:
     """
     Send a request to the server and return the response.
 
@@ -62,17 +73,25 @@ def send_request(
             logger.debug("Received response from server")
             # Parse response using TypeAdapter to handle union types
             response_adapter = TypeAdapter(
-                ListResponse | AttachResponse | ErrorResponse
+                ListResponse | DeviceResponse | ErrorResponse
             )
             decoded = response_adapter.validate_json(response)
 
             if isinstance(decoded, ErrorResponse):
-                if raise_on_error:
-                    logger.error(f"Server returned error: {decoded.message}")
-                raise RuntimeError(f"Server error: {decoded.message}")
+                match decoded.status:
+                    case "not_found":
+                        logger.debug(f"Device not found: {decoded.message}")
+                        raise DeviceNotFoundError(f"{decoded.message}")
+                    case "multiple_matches":
+                        logger.debug(f"Multiple matches: {decoded.message}")
+                        raise MultiMatchError(f"{decoded.message}")
+                    case "error":
+                        logger.debug(f"Server returned error: {decoded.message}")
+                        raise RuntimeError(f"Server error: {decoded.message}")
 
             logger.debug(f"Request successful: {request.command}")
             return decoded
+
     except TimeoutError as e:
         msg = f"Connection to {server_host}:{server_port} timed out after {timeout}s"
         logger.warning(msg)
@@ -115,43 +134,133 @@ def list_devices(
     return results
 
 
-def attach_detach_device(
-    args: AttachRequest,
+def detach_local_device(bus_id: str, server_host: str) -> None:
+    """
+    Find a local usbip port by remote bus ID and server, then detach it.
+
+    Args:
+        bus_id: The remote bus ID of the device to detach
+        server_host: The server hostname or IP address
+    """
+    try:
+        port = Port.get_port_by_remote_busid(bus_id, server_host)
+        if port is not None:
+            logger.info(f"Found local port {port.port} for device {bus_id}, detaching")
+            run_command(["sudo", "usbip", "detach", "-p", port.port])
+    except Exception as e:
+        print(e)
+        logger.warning(f"Failed to detach device {bus_id} locally: {e}")
+
+
+def attach_device(bus_id: str, server_host: str) -> None:
+    """
+    Attach a USB device by bus ID from a specific server.
+
+    Args:
+        bus_id: The bus ID of the device to attach
+        server_host: Server hostname or IP address
+        server_port: Server port number
+        timeout: Connection timeout in seconds. If None, uses configured timeout.
+    """
+
+    # occasionally if a remote server has been restarted, the local port
+    # may still be attached even though the remote device is gone -
+    # try to detach it first to be safe
+    detach_local_device(bus_id, server_host)
+
+    logger.debug(f"Asking remote {server_host} to bind {bus_id} to usbip")
+    request = DeviceRequest(
+        command="attach",
+        bus=bus_id,
+    )
+    send_request(request, server_host)
+
+    logger.info(f"Attaching device {bus_id} from {server_host} to local system")
+    run_command(
+        [
+            "sudo",
+            "usbip",
+            "attach",
+            "-r",
+            server_host,
+            "-b",
+            bus_id,
+        ]
+    )
+    logger.info(f"Device attached: {bus_id}")
+
+
+def detach_device(bus_id: str, server_host: str) -> None:
+    """
+    Detach a USB device by bus ID from a specific server.
+
+    Args:
+        bus_id: The bus ID of the device to detach
+        server_host: Server hostname or IP address
+        server_port: Server port number
+        timeout: Connection timeout in seconds. If None, uses configured timeout.
+    """
+    detach_local_device(bus_id, server_host)
+
+    logger.debug(f"Asking remote {server_host} to unbind {bus_id} from usbip")
+    request = DeviceRequest(
+        command="detach",
+        bus=bus_id,
+    )
+    send_request(request, server_host)
+
+    logger.info(f"Device detached: {server_host}:{bus_id}")
+
+
+def find_device(
     server_hosts: list[str],
-    server_port: int = 5055,
-    detach: bool = False,
-    timeout: float | None = None,
+    id: str | None = None,
+    bus: str | None = None,
+    desc: str | None = None,
+    serial: str | None = None,
+    first: bool = False,
 ) -> tuple[UsbDevice, str]:
     """
-    Request to attach or detach a USB device from server(s).
+    Request to find a USB device from server(s). Will only return
+    a single device, or raise an error if multiple matches found.
+
+    If args.first is set, will return the first match found across all
+    servers.
 
     Args:
         args: AttachRequest with device search criteria
         server_hosts: list of server hostnames/IPs
         server_port: Server port number
-        detach: Whether to detach instead of attach
         timeout: Connection timeout in seconds. If None, uses configured timeout.
 
     Returns:
-        If server_hosts is a string: Tuple of (UsbDevice, None)
-        If server_hosts is a list: Tuple of (UsbDevice, server_host)
-            where device was found
+        The UsbDevice and the host where device was found
 
     Raises:
         RuntimeError: If device not found or multiple matches found (list mode only)
     """
-    action = "detach" if detach else "attach"
 
-    logger.info(f"Scanning {len(server_hosts)} servers for device to {action}")
+    logger.info(
+        f"Scanning {len(server_hosts)} for device matching {id}, {bus},"
+        f" {desc}, {serial}, {first}"
+    )
+
+    request = DeviceRequest(
+        command="find",
+        id=id,
+        bus=bus,
+        desc=desc,
+        first=first,
+        serial=serial,
+    )
+
     matches = []
 
     for server in server_hosts:
         try:
             logger.debug(f"Trying server {server}")
-            response = send_request(
-                args, server, server_port, raise_on_error=False, timeout=timeout
-            )
-            assert isinstance(response, AttachResponse)
+            response = send_request(request, server)
+            assert isinstance(response, DeviceResponse)
             matches.append((response.data, server))
             logger.debug(f"Match found on {server}: {response.data.description}")
         except RuntimeError as e:
@@ -168,7 +277,7 @@ def attach_detach_device(
         logger.error(msg)
         raise RuntimeError(msg)
 
-    if len(matches) > 1 and not args.first:
+    if len(matches) > 1 and not request.first:
         device_list = "\n".join(f"  {dev} (on {srv})" for dev, srv in matches)
         msg = (
             f"Multiple devices matched across servers:\n{device_list}\n\n"
@@ -178,22 +287,4 @@ def attach_detach_device(
 
     device, server = matches[0]
 
-    if detach:
-        logger.info(f"Device detached: {device.description}")
-    else:
-        logger.info(f"Attaching device {device.bus_id} from {server} to local system")
-        run_command(
-            [
-                "sudo",
-                "usbip",
-                "attach",
-                "-r",
-                server,
-                "-b",
-                device.bus_id,
-            ]
-        )
-        logger.info(f"Device attached: {device.description}")
-
-    logger.info(f"Device {action}ed on server {server}: {device.description}")
     return device, server
