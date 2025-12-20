@@ -11,13 +11,8 @@ Source          | <https://github.com/epics-containers/usb-remote>
 :---:           | :---:
 PyPI            | `pip install usb-remote`
 Docker          | `docker run ghcr.io/epics-containers/usb-remote:latest`
+Documentation   | <https://epics-containers.github.io/usb-remote>
 Releases        | <https://github.com/epics-containers/usb-remote/releases>
-
-## Documentation
-
-- **[Quick Start Guide](docs/QUICKSTART.md)** - Get started from installation to first device share
-- **[Architecture](docs/ARCHITECTURE.md)** - Understand the client-server model and design
-- **[Raspberry Pi Setup](docs/RASBERRYPI.md)** - Guide to setting up a Raspberry Pi as a USB server
 
 ## Multi-Server Configuration
 
@@ -150,3 +145,7 @@ usb-remote uninstall-service
 # Uninstall system service (requires sudo)
 sudo usb-remote uninstall-service --system
 ```
+
+<!-- README only content. Anything below this line won't be included in index.md -->
+
+See https://epics-containers.github.io/usb-remote for more detailed documentation.

@@ -11,13 +11,13 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
-description = "a container that mounts remote devices locally using usb-remote"
 dependencies = [
     "pydantic>=2.0.0",
     "pyusb>=1.3.1",
     "pyyaml>=6.0.0",
     "typer>=0.20.0",
 ] # Add project dependencies here, e.g. ["click", "numpy"]
+description = "A client-server application for remotely sharing USB devices with usbip"
 dynamic = ["version"]
 license.file = "LICENSE"
 readme = "README.md"
@@ -26,11 +26,16 @@ requires-python = ">=3.11"
 [dependency-groups]
 dev = [
     "copier",
+    "myst-parser",
     "pre-commit",
+    "pydata-sphinx-theme>=0.12",
     "pyright",
     "pytest",
     "pytest-cov",
     "ruff",
+    "sphinx-autobuild",
+    "sphinx-copybutton",
+    "sphinx-design",
     "tox-uv",
     "types-mock",
 ]
@@ -55,7 +60,7 @@ reportMissingImports = false  # Ignore missing stubs in imported modules
 [tool.pytest.ini_options]
 # Run pytest with all our checkers, and don't spam us with massive tracebacks on error
 addopts = """
-    --tb=native -vv
+    --tb=native -vv --doctest-modules --doctest-glob="*.rst"
     """
 # https://iscinumpy.gitlab.io/post/bound-version-constraints/#watch-for-warnings
 filterwarnings = "error"
@@ -73,7 +78,7 @@ source = ["src", "**/site-packages/"]
 [tool.tox]
 skipsdist = true
 # envs to runs automatically with tox -p
-env_list = ["pre-commit", "type-checking", "tests"]
+env_list = ["pre-commit", "type-checking", "tests", "docs"]
 
 [tool.tox.env_run_base]
 # Pass all environment variables to the test environments
@@ -116,6 +121,37 @@ commands = [
         "term",
         "--cov-report",
         "xml:cov.xml",
+        { replace = "posargs", default = [
+        ], extend = true },
+    ],
+]
+
+[tool.tox.env.docs]
+description = "Run docs build with clean environment"
+commands = [
+    [
+        "sphinx-build",
+        "--fresh-env",
+        "--show-traceback",
+        "--fail-on-warning",
+        "--keep-going",
+        "docs",
+        "build/html",
+        { replace = "posargs", default = [
+        ], extend = true },
+    ],
+]
+
+[tool.tox.env.docs-autobuild]
+description = "Run docs with autobuild on change"
+commands = [
+    [
+        "sphinx-autobuild",
+        "--show-traceback",
+        "--watch",
+        "README.md",
+        "docs",
+        "build/html",
         { replace = "posargs", default = [
         ], extend = true },
     ],
