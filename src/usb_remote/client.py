@@ -9,6 +9,9 @@ from .api import (
     ErrorResponse,
     ListRequest,
     ListResponse,
+    attach_command,
+    detach_command,
+    find_command,
 )
 from .config import get_timeout
 from .port import Port
@@ -159,7 +162,7 @@ def attach_device(bus_id: str, server_host: str) -> None:
 
     logger.debug(f"Asking remote {server_host} to bind {bus_id} to usbip")
     request = DeviceRequest(
-        command="attach",
+        command=attach_command,
         bus=bus_id,
     )
     send_request(request, server_host)
@@ -193,7 +196,7 @@ def detach_device(bus_id: str, server_host: str) -> None:
 
     logger.debug(f"Asking remote {server_host} to unbind {bus_id} from usbip")
     request = DeviceRequest(
-        command="detach",
+        command=detach_command,
         bus=bus_id,
     )
     send_request(request, server_host)
@@ -235,7 +238,7 @@ def find_device(
     )
 
     request = DeviceRequest(
-        command="find",
+        command=find_command,
         id=id,
         bus=bus,
         desc=desc,

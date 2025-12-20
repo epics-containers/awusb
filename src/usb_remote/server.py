@@ -1,6 +1,7 @@
 import logging
 import socket
 import threading
+from typing import Literal
 
 from pydantic import TypeAdapter, ValidationError
 
@@ -10,6 +11,9 @@ from .api import (
     ErrorResponse,
     ListRequest,
     ListResponse,
+    error_response,
+    multiple_matches_response,
+    not_found_response,
 )
 from .usbdevice import (
     DeviceNotFoundError,
@@ -77,6 +81,16 @@ class CommandServer:
         """Send a JSON response to the client."""
         client_socket.sendall(response.model_dump_json().encode("utf-8") + b"\n")
 
+    def _send_error_response(
+        self,
+        client_socket: socket.socket,
+        status: Literal["error", "not_found", "multiple_matches"],
+        message: str,
+    ):
+        """Send an error response to the client."""
+        response = ErrorResponse(status=status, message=message)
+        self._send_response(client_socket, response)
+
     def handle_client(self, client_socket: socket.socket, address):
         """Handle individual client connections."""
 
@@ -84,10 +98,9 @@ class CommandServer:
             data = client_socket.recv(1024).decode("utf-8")
 
             if not data:
-                response = ErrorResponse(
-                    status="error", message="Empty or invalid command"
+                self._send_error_response(
+                    client_socket, error_response, "Empty or invalid command"
                 )
-                self._send_response(client_socket, response)
                 return
 
             # Try to parse as either ListRequest or AttachRequest
@@ -95,10 +108,9 @@ class CommandServer:
             try:
                 request = request_adapter.validate_json(data)
             except ValidationError as e:
-                response = ErrorResponse(
-                    status="error", message=f"Invalid request format: {str(e)}"
+                self._send_error_response(
+                    client_socket, error_response, f"Invalid request format: {str(e)}"
                 )
-                self._send_response(client_socket, response)
                 return
 
             logger.info(
@@ -117,22 +129,16 @@ class CommandServer:
 
         except DeviceNotFoundError as e:
             logger.warning(f"Device not found for client {address}: {e}")
-            response = ErrorResponse(status="not_found", message=str(e))
-            self._send_response(client_socket, response)
+            self._send_error_response(client_socket, not_found_response, str(e))
         except MultipleDevicesError as e:
             logger.warning(f"Multiple devices matched for client {address}: {e}")
-            response = ErrorResponse(status="multiple_matches", message=str(e))
-            self._send_response(client_socket, response)
+            self._send_error_response(client_socket, multiple_matches_response, str(e))
         except Exception as e:
             logger.error(f"Error handling client {address}: {e}")
-            response = ErrorResponse(status="error", message=str(e))
-            self._send_response(client_socket, response)
+            self._send_error_response(client_socket, error_response, str(e))
 
         finally:
             client_socket.close()
-
-    def _respond_to_client(self, client_socket, response):
-        self._send_response(client_socket, response)
 
     def start(self):
         """Start the server."""
