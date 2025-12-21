@@ -168,8 +168,7 @@ Before backing up the image we put the SD card into read-only mode. This avoids 
 
 1. Set the SD card to read-only mode with an overlay filesystem in RAM.
     ```bash
-    sudo raspi-config nonint enable_overlayfs
-    sudo raspi-config nonint enable_bootro
+    sudo raspi-config nonint do_overlayfs 0
     # DO NOT reboot until the backup image has been created
     # ALSO: ignore warnings about fstab has been modifiedsyn
     ```
@@ -198,6 +197,25 @@ Before backing up the image we put the SD card into read-only mode. This avoids 
     ```bash
     sudo poweroff
     ```
+
+## Step 9 Prepare the Backup Image for Distribution
+
+The image file you have created has removed the empty space in the root partition to make it nice and small. The contents of boot partition must be updated to tell the Raspberry Pi to expand the root partition to fill the microSD card on first boot. The `pi-shrink` script does this for you.
+
+1. Get the `pi-shrink` script.
+    ```bash
+    curl -fsSO https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh
+    chmod +x pishrink.sh
+    ```
+1. Run `pi-shrink` on the backup image you created in Step 8.
+    ```bash
+    sudo ./pishrink.sh /path/to/your/raspi-usb-remote-2025.12.20.img
+    ```
+
+You can ignore the warning "Filesystem already shrunk to smallest size. Skipping filesystem shrinking".
+
+That's it. Your img file can now be used to create additional Raspberry Pi usb-remote servers as needed.
+
 
 ## Conclusion
 
