@@ -15,7 +15,7 @@ TODO: some notes on assembly go here.
 
 ## Step 2a: Obtain Raspberry Pi usb-remote Server microSD Card
 
-If you have a supply of pre-built Raspberry Pi usb-remote server sdcard images you can skip this step and go to [Step 2 Extract the Raspberry Pi MAC Address](#step-2-extract-the-raspberry-pi-mac-address).
+If you have a supply of pre-built Raspberry Pi usb-remote server sdcard images you can skip this step and go to `Step 3: Extract the Raspberry Pi MAC Address`.
 
 At DLS these can be obtained from TODO: where?
 
@@ -25,8 +25,8 @@ Alternatively, flash your own card.
 
 1. Obtain the latest Raspberry Pi usb-remote server image.
     - At DLS this is available at /dls_sw/apps TODO: add path here.
-    - giles' latest can be downloaded from here: https://drive.google.com/file/d/1pvCIkpnDC90Z086w6k2WjTKtdAcx9RPU/view?usp=sharing
-    - Alternatively, build your own image using the instructions at [Building a Custom Raspberry Pi Image](building_raspi_image.md).
+    - giles' latest image can be downloaded from here: https://drive.google.com/file/d/1pvCIkpnDC90Z086w6k2WjTKtdAcx9RPU/view?usp=sharing
+    - Alternatively, build your own image using the instructions at [Create a New Raspberry Pi Boot Image From Scratch](../how-to/new_raspi.md).
 1. Insert a microSD card of at least 16GB capacity into a card reader connected to your computer.
 1. Use `lsblk` to identify the device name of the microSD card (e.g. `/dev/sdb`).
 1. Flash the image to a microSD card. **CAREFUL** - replace `/dev/sdX` with the correct device name for your microSD card and remember that this will overwrite the specified device.
