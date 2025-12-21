@@ -4,21 +4,12 @@
 
 To add remote USB device support requires a usb-remote server at the location of the USB devices. e.g. In a beamline's experimental hutch. This tutorial describes how to commission a new Raspberry Pi to act as a usb-remote server.
 
-In summary the steps are:
-1. Purchase and assemble the recommended hardware.
-1. Flash a Raspberry Pi usb-remote server image to a microSD card.
-1. Extract the Raspberry Pi MAC address and label the Raspberry Pi with it.
-1. Configure an IP address on the network using the MAC address.
-1. Connect the Raspberry Pi to the network and power it on.
-1. Verify the new server is visible to the usb-remote client.
-
-
 
 ## Step 1: Obtain and Assemble Recommended Hardware
 
 See [Recommended Hardware](../reference/recommended_hardware.md) for the list of recommended hardware to use for a Raspberry Pi usb-remote server.
 
-Any Raspberry Pi 4 or 5 with at least 4GB RAM is suitable.
+Any Raspberry Pi 4 or 5 with at least 4GB RAM and at least 16GB microSD card is suitable.
 
 TODO: some notes on assembly go here.
 
@@ -65,3 +56,5 @@ On any linux machine that can route to the new Raspberry Pi server IP, run:
 uvx usb-remote config add-server <raspberry_pi_ip_address>
 uvx usb-remote list
 ```
+
+You should see the new server listed without errors.
