@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Commissioning a Raspberry new Raspberry Pi Server &#8212; usb-remote 2.0.1.dev3+gf014b3cac documentation</title>
+    <title>Commissioning a new Raspberry Pi as a usb-remote Server &#8212; usb-remote 2.0.1.dev4+ga585289d8 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=e6547875"></script>
+    <script src="../_static/documentation_options.js?v=c5a59493"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -397,7 +397,7 @@
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Commissioning a Raspberry new Raspberry Pi Server</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Commissioning a new Raspberry Pi as a usb-remote Server</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 </ul>
 </div>
@@ -442,7 +442,7 @@
     
     <li class="breadcrumb-item"><a href="../tutorials.html" class="nav-link">Tutorials</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Commissioning a Raspberry new Raspberry Pi Server</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Commissioning a new Raspberry Pi as a usb-remote Server</span></li>
   </ul>
 </nav>
 </div>
@@ -459,9 +459,72 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="commissioning-a-raspberry-new-raspberry-pi-server">
-<h1>Commissioning a Raspberry new Raspberry Pi Server<a class="headerlink" href="#commissioning-a-raspberry-new-raspberry-pi-server" title="Link to this heading">#</a></h1>
-<p>TODO: Write this page.</p>
+  <section id="commissioning-a-new-raspberry-pi-as-a-usb-remote-server">
+<h1>Commissioning a new Raspberry Pi as a usb-remote Server<a class="headerlink" href="#commissioning-a-new-raspberry-pi-as-a-usb-remote-server" title="Link to this heading">#</a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Link to this heading">#</a></h2>
+<p>To add remote USB device support requires a usb-remote server at the location of the USB devices. e.g. In a beamline’s experimental hutch. This tutorial describes how to commission a new Raspberry Pi to act as a usb-remote server.</p>
+</section>
+<section id="step-1-obtain-and-assemble-recommended-hardware">
+<h2>Step 1: Obtain and Assemble Recommended Hardware<a class="headerlink" href="#step-1-obtain-and-assemble-recommended-hardware" title="Link to this heading">#</a></h2>
+<p>See <a class="reference internal" href="../reference/recommended_hardware.html"><span class="std std-doc">Recommended Hardware</span></a> for the list of recommended hardware to use for a Raspberry Pi usb-remote server.</p>
+<p>Any Raspberry Pi 4 or 5 with at least 4GB RAM and at least 16GB microSD card is suitable.</p>
+<p>TODO: some notes on assembly go here.</p>
+</section>
+<section id="step-2a-obtain-raspberry-pi-usb-remote-server-microsd-card">
+<h2>Step 2a: Obtain Raspberry Pi usb-remote Server microSD Card<a class="headerlink" href="#step-2a-obtain-raspberry-pi-usb-remote-server-microsd-card" title="Link to this heading">#</a></h2>
+<p>If you have a supply of pre-built Raspberry Pi usb-remote server sdcard images you can skip this step and go to <code class="docutils literal notranslate"><span class="pre">Step</span> <span class="pre">3:</span> <span class="pre">Extract</span> <span class="pre">the</span> <span class="pre">Raspberry</span> <span class="pre">Pi</span> <span class="pre">MAC</span> <span class="pre">Address</span></code>.</p>
+<p>At DLS these can be obtained from TODO: where?</p>
+</section>
+<section id="step-2b-flash-the-raspberry-pi-usb-remote-server-image">
+<h2>Step 2b: Flash the Raspberry Pi usb-remote Server Image<a class="headerlink" href="#step-2b-flash-the-raspberry-pi-usb-remote-server-image" title="Link to this heading">#</a></h2>
+<p>Alternatively, flash your own card.</p>
+<ol class="arabic">
+<li><p>Obtain the latest Raspberry Pi usb-remote server image.</p>
+<ul class="simple">
+<li><p>At DLS this is available at /dls_sw/apps TODO: add path here.</p></li>
+<li><p>giles’ latest image can be downloaded from here: https://drive.google.com/file/d/1pvCIkpnDC90Z086w6k2WjTKtdAcx9RPU/view?usp=sharing</p></li>
+<li><p>Alternatively, build your own image using the instructions at <a class="reference internal" href="../how-to/new_raspi.html"><span class="std std-doc">Create a New Raspberry Pi Boot Image From Scratch</span></a>.</p></li>
+</ul>
+</li>
+<li><p>Insert a microSD card of at least 16GB capacity into a card reader connected to your computer.</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">lsblk</span></code> to identify the device name of the microSD card (e.g. <code class="docutils literal notranslate"><span class="pre">/dev/sdb</span></code>).</p></li>
+<li><p>Flash the image to a microSD card. <strong>CAREFUL</strong> - replace <code class="docutils literal notranslate"><span class="pre">/dev/sdX</span></code> with the correct device name for your microSD card and remember that this will overwrite the specified device.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>dd<span class="w"> </span><span class="k">if</span><span class="o">=</span>./raspberry_pi_usb-remote_server.img<span class="w"> </span><span class="nv">of</span><span class="o">=</span>/dev/sdX<span class="w"> </span><span class="nv">bs</span><span class="o">=</span>4M<span class="w"> </span><span class="nv">status</span><span class="o">=</span>progress<span class="w"> </span><span class="nv">conv</span><span class="o">=</span>fsync
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="step-3-extract-the-raspberry-pi-mac-address">
+<h2>Step 3: Extract the Raspberry Pi MAC Address<a class="headerlink" href="#step-3-extract-the-raspberry-pi-mac-address" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>TODO: this will involve booting the Pi with a printer plugged in.</p></li>
+<li><p>Alternatively, if you have access to a monitor and keyboard you can boot the Pi and run <code class="docutils literal notranslate"><span class="pre">ip</span> <span class="pre">link</span> <span class="pre">show</span> <span class="pre">eth0</span></code> to get the MAC address of the <code class="docutils literal notranslate"><span class="pre">eth0</span></code> interface.</p></li>
+</ul>
+</section>
+<section id="step-4-configure-an-ip-address-for-the-raspberry-pi">
+<h2>Step 4: Configure an IP Address for the Raspberry Pi<a class="headerlink" href="#step-4-configure-an-ip-address-for-the-raspberry-pi" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>TODO: infoblox instructions go here.</p></li>
+</ul>
+</section>
+<section id="step-5-connect-the-raspberry-pi-to-the-network-and-power-it-on">
+<h2>Step 5: Connect the Raspberry Pi to the Network and Power it On<a class="headerlink" href="#step-5-connect-the-raspberry-pi-to-the-network-and-power-it-on" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>Connect the Raspberry Pi to the network using a wired ethernet connection.</p></li>
+<li><p>Power on the Raspberry Pi using the USB-C power supply.</p></li>
+</ul>
+</section>
+<section id="step-6-verify-the-new-server-is-visible-to-the-usb-remote-client">
+<h2>Step 6: Verify the New Server is Visible to the usb-remote Client<a class="headerlink" href="#step-6-verify-the-new-server-is-visible-to-the-usb-remote-client" title="Link to this heading">#</a></h2>
+<p>On any linux machine that can route to the new Raspberry Pi server IP, run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uvx<span class="w"> </span>usb-remote<span class="w"> </span>config<span class="w"> </span>add-server<span class="w"> </span>&lt;raspberry_pi_ip_address&gt;
+uvx<span class="w"> </span>usb-remote<span class="w"> </span>list
+</pre></div>
+</div>
+<p>You should see the new server listed without errors.</p>
+</section>
 </section>
 
 
@@ -502,6 +565,25 @@
                 <dialog id="pst-secondary-sidebar-modal"></dialog>
                 <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
 
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#introduction">Introduction</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-1-obtain-and-assemble-recommended-hardware">Step 1: Obtain and Assemble Recommended Hardware</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-2a-obtain-raspberry-pi-usb-remote-server-microsd-card">Step 2a: Obtain Raspberry Pi usb-remote Server microSD Card</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-2b-flash-the-raspberry-pi-usb-remote-server-image">Step 2b: Flash the Raspberry Pi usb-remote Server Image</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-3-extract-the-raspberry-pi-mac-address">Step 3: Extract the Raspberry Pi MAC Address</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-4-configure-an-ip-address-for-the-raspberry-pi">Step 4: Configure an IP Address for the Raspberry Pi</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-5-connect-the-raspberry-pi-to-the-network-and-power-it-on">Step 5: Connect the Raspberry Pi to the Network and Power it On</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-6-verify-the-new-server-is-visible-to-the-usb-remote-client">Step 6: Verify the New Server is Visible to the usb-remote Client</a></li>
+</ul>
+  </nav></div>
 
   <div class="sidebar-secondary-item">
 
