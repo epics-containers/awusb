@@ -126,10 +126,9 @@ IMPORTANT: These steps must be done before the first boot of the Raspberry Pi. T
 
 1. Add the kernel modules to `/etc/modules` so they load at boot.
     ```bash
-    echo "usbip_core
-    usbip_host" | sudo tee -a /etc/modules
     sudo modprobe usbip_core
     sudo modprobe usbip_host
+    echo -e "usbip-core\nusbip-host" | sudo tee /etc/modules-load.d/usbip.conf
     ```
 
 1. Install the `usbip` package.

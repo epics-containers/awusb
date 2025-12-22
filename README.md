@@ -9,77 +9,43 @@ Client-server software to share USB devices over the network.
 
 Source          | <https://github.com/epics-containers/usb-remote>
 :---:           | :---:
-PyPI            | `pip install usb-remote`
+PyPI            | `uvx usb-remote --version`
 Docker          | `docker run ghcr.io/epics-containers/usb-remote:latest`
 Documentation   | <https://epics-containers.github.io/usb-remote>
 Releases        | <https://github.com/epics-containers/usb-remote/releases>
 
-## Multi-Server Configuration
 
-You can configure `usb-remote` to scan multiple USB device servers automatically. The client discovers configuration files in the following priority order:
+## Overview
 
-1. **Environment variable**: `USB_REMOTE_CONFIG=/path/to/config.yaml`
-1. **Project-local config**: `.usb-remote.config` in current directory
-1. **User config**: `~/.config/usb-remote/usb-remote.config` (default)
+`usb-remote` allows USB devices to be very easily shared over a network using the linux usbip service. A `usb-remote` server runs on a machine with physical USB devices attached, and clients can connect to the server to access and control those devices as if they were locally connected.
 
-Create a configuration file with the following format:
+## Comparison to Digi's AnyWhereUSB
 
-```yaml
-servers:
-  - localhost
-  - raspberrypi
-  - 192.168.1.100
-  - usb-server-1.local
+`usb-remote` is an FOSS alternative to commercial USB-over-Ethernet solutions like Digi's AnyWhereUSB.
 
-# Optional: Connection timeout in seconds (default: 5.0)
-timeout: 5.0
-```
+Advantages of Digi's AnyWhereUSB:
+- Commercial product with support and warranty
+- Dedicated hardware servers for USB device sharing
+- Excellent security features controlling access to USB devices
 
-See `usb-remote.config.example` for a sample configuration file.
+Advantages of `usb-remote`:
+- Good support for UVC isochronous Webcams that do not work with AnyWhereUSB
+- Very simple to setup and use in trusted network environments
+- Free and open source software (FOSS)
+- The server runs on standard hardware such as a $55 Raspberry Pi
 
-### Config File Discovery Examples
+## Installation
 
-```bash
-# Use default config from ~/.config/usb-remote/usb-remote.config
-usb-remote list
+See the [Server Setup](./how-to/server_setup.md) and [Client Setup](./how-to/client_setup.md) guides for installation instructions.
 
-# Use project-specific config from current directory
-cd /path/to/project
-echo "servers: [myserver]" > .usb-remote.config
-usb-remote list
-
-# Use environment variable (useful in CI/CD)
-export USB_REMOTE_CONFIG=/etc/usb-remote/production.config
-usb-remote list
-```
-
-### Connection Timeout
-
-The `timeout` setting controls how long to wait when connecting to each server before giving up. This prevents the client from hanging when a server is unreachable. The default is 5 seconds, but you can adjust it based on your network conditions:
-
-- **Fast local network**: Use a shorter timeout (e.g., `2.0` seconds)
-- **Slow or remote servers**: Use a longer timeout (e.g., `10.0` seconds)
-
-When a server times out, it's logged as a warning and skipped, allowing other servers to be queried.
-
-### Behavior
-
-- **list**: Without `--host`, queries all configured servers and displays devices grouped by server
-- **attach/detach**: Without `--host`, scans all servers to find a matching device
-  - Fails if no match is found across all servers
-  - Fails if multiple matches are found across different servers (unless `--first` is used)
-  - Succeeds if exactly one match is found (reports which server it was found on)
-  - With `--first` flag: Attaches the first matching device found, even if multiple servers have matching devices
-- **--host flag**: When specified, only queries that specific server (ignores config file)
-
-### Examples
+### Example Client Commands
 
 ```bash
 # List devices on all configured servers
 usb-remote list
 
 # List devices on a specific server
-usb-remote list --host raspberrypi
+usb-remote list --host raspberrypi1
 
 # Attach a device (scans all servers, fails if multiple matches)
 usb-remote attach --desc "Camera"
@@ -87,65 +53,13 @@ usb-remote attach --desc "Camera"
 # Attach first matching device across servers
 usb-remote attach --desc "Camera" --first
 
-# Attach a device from a specific server
-usb-remote attach --desc "Camera" --host 192.168.1.100
+# Attach a device based on serial number
+usb-remote attach --serial=5072D8DF
 
-# Detach with first match (if same device attached from multiple servers)
-usb-remote detach --desc "Camera" --first
+# Detach a device
+usb-remote detach --serial=5072D8DF
 ```
 
-## Installing as a Service
+## Architecture
 
-You can install the usb-remote server as a systemd service to run automatically at boot.
-
-### System Service (Recommended)
-
-Install as a system service (runs at boot, before login):
-
-```bash
-# Install as system service (requires sudo)
-sudo usb-remote install-service --system
-
-# Enable and start
-sudo systemctl enable usb-remote.service
-sudo systemctl start usb-remote.service
-
-# Check status
-sudo systemctl status usb-remote.service
-```
-
-### User Service (Not Recommended)
-
-Install as a user service (runs when you log in) useful for testing if you don't have sudo access:
-
-```bash
-# Install the service
-usb-remote install-service
-
-# Enable it to start on login
-systemctl --user enable usb-remote.service
-
-# Start the service now
-systemctl --user start usb-remote.service
-
-# Check status
-systemctl --user status usb-remote.service
-
-# View logs
-journalctl --user -u usb-remote.service -f
-```
-
-
-### Uninstalling
-
-```bash
-# Uninstall user service
-usb-remote uninstall-service
-
-# Uninstall system service (requires sudo)
-sudo usb-remote uninstall-service --system
-```
-
-<!-- README only content. Anything below this line won't be included in index.md -->
-
-See https://epics-containers.github.io/usb-remote for more detailed documentation.
+See the [Architecture Reference](./reference/architecture.md) for full details.

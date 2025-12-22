@@ -7,7 +7,7 @@ To add remote USB device support requires a usb-remote server at the location of
 
 ## Step 1: Obtain and Assemble Recommended Hardware
 
-See [Recommended Hardware](../reference/recommended_hardware.md) for the list of recommended hardware to use for a Raspberry Pi usb-remote server.
+See [Recommended Server Hardware](../reference/recommended_hardware.md) for the list of recommended hardware to use for a Raspberry Pi usb-remote server.
 
 Any Raspberry Pi 4 or 5 with at least 4GB RAM and at least 16GB microSD card is suitable.
 
