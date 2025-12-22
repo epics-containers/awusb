@@ -2,7 +2,7 @@
 
 The client configuration determines which USB device servers the `usb-remote` client will attempt to connect to.
 
-# Configuration via the CLI
+## Configuration via the CLI
 
 You can specify a configuration file directly using the `config` command with any `usb-remote` command:
 
@@ -11,7 +11,7 @@ see help for details:
 usb-remote config --help
 ```
 
-# File Location Priority
+## File Location Priority
 
 The client discovers configuration files in the following priority order:
 
@@ -19,7 +19,7 @@ The client discovers configuration files in the following priority order:
 1. **Project-local config**: `.usb-remote.config` in current directory
 1. **User config**: `~/.config/usb-remote/usb-remote.config` (default)
 
-# File Format
+## File Format
 
 Create a configuration file with the following YAML format:
 

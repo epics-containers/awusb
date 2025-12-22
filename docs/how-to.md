@@ -4,6 +4,10 @@ Practical step-by-step guides for the more experienced user.
 
 ```{toctree}
 :maxdepth: 1
+how-to/client_setup.md
+how-to/server_setup.md
+how-to/new_raspi.md
+how-to/updating_raspi_image.md
 :glob:
 
 how-to/*

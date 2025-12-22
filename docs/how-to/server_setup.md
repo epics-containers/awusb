@@ -10,6 +10,8 @@ Any linux machine with a supported USB controller can run the `usb-remote` serve
 
 For good results and a pre-created image file with all the software installed, we recommend a Raspberry Pi 5, see [Recommended Server Hardware](../reference/recommended_hardware.md).
 
+If you go with the recommended hardware, you can skip these instructions and instead go to the [Raspberry Pi Commissioning Guide](../tutorials/commissioning_raspi.md).
+
 ## Installing Prerequisites
 
 1. Install the usbip CLI:

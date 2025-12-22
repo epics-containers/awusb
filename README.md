@@ -53,7 +53,7 @@ usb-remote attach --desc "Camera"
 # Attach first matching device across servers
 usb-remote attach --desc "Camera" --first
 
-# Attach a device based on serial number
+# Attach a device based on serial number - recommended for guaranteed unique match
 usb-remote attach --serial=5072D8DF
 
 # Detach a device
