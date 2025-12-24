@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Setup Rasberry Pi Pico for MAC Address Display &#8212; usb-remote 2.2.1.dev2+g1b50eaa0c documentation</title>
+    <title>Setup Raspberry Pi Pico for MAC Address Display &#8212; usb-remote 2.2.1.dev3+g70106957e documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=ee4d2554"></script>
+    <script src="../_static/documentation_options.js?v=83d4255a"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -401,9 +401,10 @@
 <li class="toctree-l1"><a class="reference internal" href="server_setup.html">Server Setup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="new_raspi.html">Create a New Raspberry Pi Boot Image From Scratch</a></li>
 <li class="toctree-l1"><a class="reference internal" href="updating_raspi_image.html">Updating an Existing Raspberry Pi Boot Image</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Setup Rasberry Pi Pico for MAC Address Display</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Setup Raspberry Pi Pico for MAC Address Display</a></li>
 <li class="toctree-l1"><a class="reference internal" href="run-container.html">Run in a container</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contribute.html">Contribute to the project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dhcp_server.html">Setting up a DHCP Server for testing usb-remote</a></li>
 </ul>
 </div>
 </nav></div>
@@ -447,7 +448,7 @@
     
     <li class="breadcrumb-item"><a href="../how-to.html" class="nav-link">How-to Guides</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Setup Rasberry Pi Pico for MAC Address Display</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Setup Raspberry Pi Pico for MAC Address Display</span></li>
   </ul>
 </nav>
 </div>
@@ -464,8 +465,8 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="setup-rasberry-pi-pico-for-mac-address-display">
-<h1>Setup Rasberry Pi Pico for MAC Address Display<a class="headerlink" href="#setup-rasberry-pi-pico-for-mac-address-display" title="Link to this heading">#</a></h1>
+  <section id="setup-raspberry-pi-pico-for-mac-address-display">
+<h1>Setup Raspberry Pi Pico for MAC Address Display<a class="headerlink" href="#setup-raspberry-pi-pico-for-mac-address-display" title="Link to this heading">#</a></h1>
 <section id="intro">
 <h2>Intro<a class="headerlink" href="#intro" title="Link to this heading">#</a></h2>
 <p>This guide explains how to set up a Raspberry Pi Pico with an OLED display to show the MAC address of a Raspberry Pi when powered on. This is useful for commissioning new Raspberry Pi usb-remote servers.</p>
@@ -477,17 +478,29 @@
 <li><p>Take the Raspberry Pi to the beamline, connect it to the instrumentation network and power it on.</p></li>
 </ul>
 </section>
+<section id="hardware-required">
+<h2>Hardware Required<a class="headerlink" href="#hardware-required" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>Raspberry Pi Pico (with micro USB connector)</p></li>
+<li><p>A display for the Pico e.g. 1.3” I2C OLED Display</p>
+<ul>
+<li><p>The next heading provides code for this specific display - other displays will need a small amount of code modification</p></li>
+</ul>
+</li>
+</ul>
+<p><img alt="Raspberry Pi Pico with OLED display" src="../_images/pico-led.png" /></p>
+</section>
 <section id="code-on-the-pico">
 <h2>Code on the Pico<a class="headerlink" href="#code-on-the-pico" title="Link to this heading">#</a></h2>
-<p>TODO: expand this into a full explanation.</p>
 <ul class="simple">
 <li><p>flash the Pico with the UF2 for MicroPython from <a class="reference external" href="https://micropython.org/download/RPI_PICO/">https://micropython.org/download/RPI_PICO/</a></p></li>
-<li><p>save the following code as <code class="docutils literal notranslate"><span class="pre">main.py</span></code> on the Pico filesystem.</p></li>
+<li><p>clone https://github.com/samveen/pico-oled-1.3-driver and copy the python files to the Pico root filesystem</p></li>
+<li><p>save the following code as <code class="docutils literal notranslate"><span class="pre">main.py</span></code> on the Pico root filesystem.</p></li>
 </ul>
-<p>TODO: this code is for a different IC2 OLED display - need to change to the correct one for the Pico OLED 1.3”</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">select</span>
+<p>See <a class="reference external" href="https://www.waveshare.com/wiki/Pico-OLED-1.3">https://www.waveshare.com/wiki/Pico-OLED-1.3</a> for more details on using the display.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">select</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">PicoOled13</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">hardware.outputs</span><span class="w"> </span><span class="kn">import</span> <span class="n">display</span>
 
@@ -495,29 +508,30 @@
 <span class="n">poll_obj</span> <span class="o">=</span> <span class="n">select</span><span class="o">.</span><span class="n">poll</span><span class="p">()</span>
 <span class="n">poll_obj</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdin</span><span class="p">,</span> <span class="n">select</span><span class="o">.</span><span class="n">POLLIN</span><span class="p">)</span>
 
-
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
-    <span class="n">display</span><span class="o">.</span><span class="n">lcd_print</span><span class="p">(</span><span class="s2">&quot;Await input ... &quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-    <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="c1"># Initialize the display</span>
+    <span class="n">display</span><span class="o">=</span><span class="n">PicoOled13</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+    <span class="n">display</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+    <span class="n">display</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">&quot;Listening ...&quot;</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mh">0xffff</span><span class="p">)</span>
+    <span class="n">display</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+    <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;awaiting data ...</span><span class="se">\r</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-        <span class="c1"># Wait for input on stdin, waiting for 100 ms</span>
-        <span class="n">poll_results</span> <span class="o">=</span> <span class="n">poll_obj</span><span class="o">.</span><span class="n">poll</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+        <span class="c1"># Wait for input on stdin, waiting for 1000 ms</span>
+        <span class="n">poll_results</span> <span class="o">=</span> <span class="n">poll_obj</span><span class="o">.</span><span class="n">poll</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">poll_results</span><span class="p">:</span>
             <span class="c1"># Read the data from stdin (read data coming from PC)</span>
             <span class="n">data</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-            <span class="c1"># Write the data to the input file</span>
             <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;received data: &quot;</span> <span class="o">+</span> <span class="n">data</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\r</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Write the data to the display</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="n">display</span><span class="o">.</span><span class="n">lcd_print</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># do something if no message received (like feed a watchdog timer)</span>
-            <span class="k">continue</span>
+                <span class="n">display</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+                <span class="n">display</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">data</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mh">0xffff</span><span class="p">)</span>
+                <span class="n">display</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 
-        <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-
-
-<span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+<span class="n">main</span><span class="p">()</span>
 </pre></div>
 </div>
 </section>
@@ -571,6 +585,7 @@
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#intro">Intro</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#hardware-required">Hardware Required</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#code-on-the-pico">Code on the Pico</a></li>
 </ul>
   </nav></div>
