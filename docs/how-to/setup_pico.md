@@ -25,7 +25,8 @@ In particular, if you are using this at DLS, we expect the Pi Server to be deplo
 - clone https://github.com/samveen/pico-oled-1.3-driver and copy the python files to the Pico root filesystem
 - save the following code as `main.py` on the Pico root filesystem.
 
-TODO: this code is for a different IC2 OLED display - need to change to the correct one for the Pico OLED 1.3"
+See <https://www.waveshare.com/wiki/Pico-OLED-1.3> for more details on using the display.
+
 ```python
 import select
 import sys
