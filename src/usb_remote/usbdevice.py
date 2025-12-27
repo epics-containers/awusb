@@ -1,3 +1,4 @@
+import fnmatch
 import re
 import subprocess
 
@@ -139,17 +140,18 @@ def get_device(
 
     for device in devices:
         if id:
-            vid, pid = id.split(":")
-            if (
-                device.vendor_id.lower() != vid.lower()
-                or device.product_id.lower() != pid.lower()
-            ):
+            device_id = f"{device.vendor_id}:{device.product_id}"
+            if not fnmatch.fnmatch(device_id.lower(), id.lower()):
                 continue
-        if bus and device.bus_id != bus:
+        if bus and not fnmatch.fnmatch(device.bus_id.lower(), bus.lower()):
             continue
-        if desc and desc.lower() not in device.description.lower():
+        # for desc, match a substring or glob pattern
+        if desc and (
+            not fnmatch.fnmatch(device.description, desc)
+            and desc not in device.description
+        ):
             continue
-        if serial and device.serial != serial:
+        if serial and device.serial and not fnmatch.fnmatch(device.serial, serial):
             continue
         filtered_devices.append(device)
 
