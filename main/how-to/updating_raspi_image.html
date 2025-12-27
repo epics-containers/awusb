@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Updating an Existing Raspberry Pi Boot Image &#8212; usb-remote 2.2.2.dev3+gd6b2d8afe documentation</title>
+    <title>Updating an Existing Raspberry Pi Boot Image &#8212; usb-remote 2.2.3.dev1+gc20e0e58d documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=5687677c"></script>
+    <script src="../_static/documentation_options.js?v=19692c21"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -483,13 +483,14 @@ sudo<span class="w"> </span>reboot
 </div>
 </li>
 <li><p>Update the (root) version of usb-remote:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>/home/local/.local/bin/uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>usb-remote<span class="o">==</span><span class="m">2</span>.1.0<span class="w"> </span>--upgrade
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>-s<span class="w"> </span><span class="c1"># uv (installed by root) requires the root profile so use sudo -s</span>
+uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>usb-remote<span class="o">==</span><span class="m">2</span>.2.2<span class="w"> </span>--upgrade
 </pre></div>
 </div>
 </li>
 <li><p>Make any other desired changes. e.g. delete the local user and add your own user/password.</p></li>
 <li><p>Restore <code class="docutils literal notranslate"><span class="pre">runonce.sh</span></code> to re-enable read-only filesystem mode on next boot:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>cp<span class="w"> </span>/var/local/runonce.sh.done<span class="w"> </span>/var/local/runonce.sh
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cp<span class="w"> </span>/var/local/runonce.sh.done<span class="w"> </span>/var/local/runonce.sh
 </pre></div>
 </div>
 </li>
