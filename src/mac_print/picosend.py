@@ -22,13 +22,30 @@ def get_host_name() -> str:
 
 
 def get_mac_address() -> str:
-    import uuid
+    import os
 
-    mac = uuid.getnode()
-    mac_str = ":".join(
-        [f"{(mac >> ele) & 0xFF:02x}" for ele in range(0, 8 * 6, 8)][::-1]
-    ).upper()
-    return mac_str
+    # Get list of network interfaces
+    net_path = "/sys/class/net"
+    interfaces = [
+        i for i in os.listdir(net_path) if i != "lo" and not i.startswith("docker")
+    ]  # Exclude loopback and docker
+
+    # Sort to ensure consistent ordering
+    interfaces.sort()
+
+    if not interfaces:
+        return "00:00:00:00:00:00"
+
+    # Get MAC address of first interface
+    first_nic = interfaces[0]
+    mac_file = os.path.join(net_path, first_nic, "address")
+
+    try:
+        with open(mac_file) as f:
+            mac_str = f.read().strip().upper()
+        return mac_str
+    except OSError:
+        return "00:00:00:00:00:00"
 
 
 def check_for_pico():
