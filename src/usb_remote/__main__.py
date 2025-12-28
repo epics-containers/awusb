@@ -9,6 +9,7 @@ from usb_remote.port import Port
 
 from . import __version__
 from .client import attach_device, detach_device, find_device, list_devices
+from .client_service import ClientService
 from .config import (
     DEFAULT_CONFIG_PATH,
     discover_config_path,
@@ -97,6 +98,26 @@ def server(
     )
     server = CommandServer()
     server.start()
+
+
+@app.command(name="client-service")
+def client_service_command(
+    ctx: typer.Context,
+) -> None:
+    """Start the USB client service that accepts socket commands."""
+    debug = ctx.obj.get("debug", False)
+    log_level = logging.DEBUG if debug else logging.INFO
+
+    # Set log level for non-debug mode (debug mode already configured in callback)
+    if not debug:
+        setup_logging(logging.INFO)
+
+    logger.info(
+        f"Starting client service {__version__} with log level: "
+        f"{logging.getLevelName(log_level)}"
+    )
+    service = ClientService()
+    service.start()
 
 
 @app.command(name="list")
