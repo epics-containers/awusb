@@ -106,7 +106,7 @@ class Port:
         Returns:
             List of /dev file paths
         """
-        dev_files = []
+        dev_files = set()
         visited = set()
 
         def _query_path(path: Path, depth: int = 0) -> None:
@@ -135,8 +135,7 @@ class Port:
                             if not dev_name.startswith("/")
                             else dev_name
                         )
-                        if dev_path not in dev_files:
-                            dev_files.append(dev_path)
+                        dev_files.add(dev_path)
 
                 # Recursively check immediate children
                 if path.is_dir():
@@ -152,7 +151,7 @@ class Port:
         except Exception as e:
             logger.debug(f"Error finding dev files for {sys_device_path}: {e}")
 
-        return dev_files
+        return list(dev_files)
 
     def detach(self) -> None:
         """Detach this port from the local system."""
