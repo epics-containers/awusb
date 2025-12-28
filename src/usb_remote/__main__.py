@@ -180,9 +180,19 @@ def attach(
         first=first,
         serial=serial,
     )
-    attach_device(device.bus_id, server)
+    local_port = attach_device(device.bus_id, server)
 
     typer.echo(f"Attached to device on {server}:\n{device}")
+    if local_port:
+        typer.echo(f"\nLocal port: {local_port.port}")
+        typer.echo(f"Description: {local_port.description}")
+
+        # Report local device files
+        local_devices = local_port.get_local_devices()
+        if local_devices:
+            typer.echo(f"Local device(s): {', '.join(local_devices)}")
+        else:
+            typer.echo("Local device files not found (may still be initializing)")
 
 
 @app.command()

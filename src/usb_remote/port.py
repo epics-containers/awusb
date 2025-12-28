@@ -2,10 +2,14 @@
 Module for working with local usbip ports.
 """
 
+import logging
 import re
 from dataclasses import dataclass
+from pathlib import Path
 
 from usb_remote.utility import run_command
+
+logger = logging.getLogger(__name__)
 
 # regex pattern for matching 'usbip port' output https://regex101.com/r/seWBvX/1
 re_ports = re.compile(
@@ -29,6 +33,121 @@ class Port:
         # everything is strings from the regex, convert port to int
         self.port_number = int(self.port)
 
+    def get_local_devices(self) -> list[str]:
+        """Find local device files associated with this usbip port.
+
+        Returns:
+            List of device file paths (e.g., ["/dev/ttyACM0", "/dev/hidraw0"])
+        """
+        devices = []
+
+        try:
+            # Find the vhci_hcd device for this port
+            # vhci ports are organized under /sys/devices/platform/vhci_hcd.*/
+            platform_path = Path("/sys/devices/platform")
+
+            if not platform_path.exists():
+                return devices
+
+            # Search through vhci_hcd controllers
+            for vhci_dir in platform_path.glob("vhci_hcd.*"):
+                # Each controller has USB busses under it
+                for usb_bus in vhci_dir.glob("usb*"):
+                    bus_num = usb_bus.name.replace("usb", "")
+
+                    # Look for the port device: format is typically {busnum}-{port}
+                    # VHCI ports map directly:
+                    #   port 0 -> {busnum}-1, port 1 -> {busnum}-2, etc.
+                    # Try different port numbering schemes
+                    for port_num in [self.port_number, self.port_number + 1]:
+                        device_path = usb_bus / f"{bus_num}-{port_num}"
+                        if device_path.exists():
+                            devices.extend(self._find_dev_files(device_path))
+                            if devices:
+                                return devices
+
+            # Fallback: search /sys/bus/usb/devices and check driver
+            sys_usb_path = Path("/sys/bus/usb/devices")
+            if sys_usb_path.exists():
+                for usb_device in sys_usb_path.iterdir():
+                    if not usb_device.is_symlink():
+                        continue
+
+                    # Check if device path contains vhci_hcd
+                    real_path = usb_device.resolve()
+                    if "vhci_hcd" in str(real_path):
+                        # Check port via devpath
+                        devpath_file = usb_device / "devpath"
+                        if devpath_file.exists():
+                            devpath = devpath_file.read_text().strip()
+                            if devpath == str(self.port_number) or devpath == str(
+                                self.port_number + 1
+                            ):
+                                devices.extend(self._find_dev_files(usb_device))
+                                if devices:
+                                    return devices
+
+        except Exception as e:
+            logger.debug(
+                f"Error finding local devices for port {self.port_number}: {e}"
+            )
+
+        return devices
+
+    def _find_dev_files(self, sys_device_path: Path) -> list[str]:
+        """Find /dev files associated with a sysfs device path.
+
+        Args:
+            sys_device_path: Path to device in /sys/bus/usb/devices/
+
+        Returns:
+            List of /dev file paths
+        """
+        dev_files = []
+
+        try:
+            # Use udevadm to query all device nodes for this device and its children
+            result = run_command(
+                ["udevadm", "info", "-q", "all", "-p", str(sys_device_path)],
+                check=False,
+            )
+
+            # Parse DEVNAME entries from udevadm output
+            for line in result.stdout.splitlines():
+                if line.startswith("E: DEVNAME="):
+                    dev_name = line.split("=", 1)[1]
+                    # DEVNAME may or may not include /dev/ prefix
+                    if not dev_name.startswith("/"):
+                        dev_name = f"/dev/{dev_name}"
+                    if dev_name not in dev_files:
+                        dev_files.append(dev_name)
+
+            # Also check all child devices recursively
+            for child in sys_device_path.rglob("*"):
+                if child.is_dir():
+                    # Check if this dir represents a device node (has a "dev" file)
+                    dev_file = child / "dev"
+                    if dev_file.exists():
+                        # Query this specific device with udevadm
+                        result = run_command(
+                            ["udevadm", "info", "-q", "name", "-p", str(child)],
+                            check=False,
+                        )
+                        dev_name = result.stdout.strip()
+                        if dev_name and not dev_name.startswith("/sys"):
+                            dev_path = (
+                                f"/dev/{dev_name}"
+                                if not dev_name.startswith("/")
+                                else dev_name
+                            )
+                            if dev_path not in dev_files:
+                                dev_files.append(dev_path)
+
+        except Exception as e:
+            logger.debug(f"Error finding dev files for {sys_device_path}: {e}")
+
+        return dev_files
+
     def detach(self) -> None:
         """Detach this port from the local system."""
 
@@ -51,14 +170,25 @@ class Port:
 
         Returns:
             A list of Port objects, each representing a port in use.
+            Returns empty list if unable to query ports (e.g., vhci_hcd not loaded).
         """
 
-        output = run_command(["sudo", "usbip", "port"]).stdout
-        ports: list[Port] = []
-        for match in re_ports.finditer(output):
-            port_info = match.groupdict()
-            ports.append(Port(**port_info))
-        return ports
+        try:
+            result = run_command(["sudo", "usbip", "port"], check=False)
+            if result.returncode != 0:
+                logger.debug(f"usbip port command failed: {result.stderr}")
+                return []
+
+            output = result.stdout
+            ports: list[Port] = []
+            for match in re_ports.finditer(output):
+                port_info = match.groupdict()
+                ports.append(Port(**port_info))
+            logger.debug(f"Found {len(ports)} active usbip ports")
+            return ports
+        except Exception as e:
+            logger.debug(f"Error listing ports: {e}")
+            return []
 
     @classmethod
     def get_port_by_remote_busid(cls, remote_busid: str, server: str) -> "Port | None":

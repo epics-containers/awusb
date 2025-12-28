@@ -1,5 +1,6 @@
 import logging
 import socket
+import time
 
 from pydantic import TypeAdapter
 
@@ -146,7 +147,7 @@ def detach_local_device(bus_id: str, server_host: str) -> None:
         logger.warning(f"Failed to detach device {bus_id} locally: {e}")
 
 
-def attach_device(bus_id: str, server_host: str) -> None:
+def attach_device(bus_id: str, server_host: str) -> Port | None:
     """
     Attach a USB device by bus ID from a specific server.
 
@@ -154,6 +155,9 @@ def attach_device(bus_id: str, server_host: str) -> None:
         bus_id: The bus ID of the device to attach
         server_host: Server hostname or IP address
         timeout: Connection timeout in seconds. If None, uses configured timeout.
+
+    Returns:
+        The local Port object representing the attached device, or None if not found
     """
 
     # occasionally if a remote server has been restarted, the local port
@@ -180,7 +184,23 @@ def attach_device(bus_id: str, server_host: str) -> None:
             bus_id,
         ]
     )
-    logger.info(f"Device attached: {bus_id}")
+
+    # Query the local port to report back what was attached
+    # Retry a few times as the device may take a moment to enumerate
+    local_port = None
+    for attempt in range(20):
+        local_port = Port.get_port_by_remote_busid(bus_id, server_host)
+        if local_port:
+            logger.info(f"Device attached on local port {local_port.port}: {bus_id}")
+            break
+        logger.debug(f"Attempt {attempt + 1}: Port not found yet for {bus_id}")
+        time.sleep(0.2)
+    else:
+        logger.warning(
+            f"Device attached but local port not found after 4 seconds: {bus_id}"
+        )
+
+    return local_port
 
 
 def detach_device(bus_id: str, server_host: str) -> None:
