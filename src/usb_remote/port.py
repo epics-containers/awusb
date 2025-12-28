@@ -6,6 +6,7 @@ import logging
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from time import sleep
 
 from usb_remote.utility import run_command
 
@@ -32,6 +33,8 @@ class Port:
     def __post_init__(self):
         # everything is strings from the regex, convert port to int
         self.port_number = int(self.port)
+        # list of local device files (e.g., ["/dev/ttyACM0"])
+        self.local_devices = self.get_local_devices()
 
     def get_local_devices(self) -> list[str]:
         """Find local device files associated with this usbip port.
@@ -161,7 +164,9 @@ class Port:
         return (
             f"- Port {self.port_number}:\n  "
             f"{self.description}\n  "
-            f"busid: {self.remote_busid} from {self.server}"
+            f"busid: {self.remote_busid} from {self.server}\n  "
+            f"local devices: "
+            f"{', '.join(self.local_devices) if self.local_devices else 'none'}"
         )
 
     @staticmethod
@@ -202,8 +207,16 @@ class Port:
             The Port of the local mount of the remote device if found, otherwise None.
             There can be only one match as port ids are unique per server.
         """
-        ports = cls.list_ports()
-        for port in ports:
-            if port.remote_busid == remote_busid and port.server == server:
-                return port
-        return None
+        local_port = None
+
+        # after initiating an attach, it may take a moment for the port to appear
+        for _ in range(20):
+            ports = cls.list_ports()
+            for port in ports:
+                if port.remote_busid == remote_busid and port.server == server:
+                    logger.info(f"Device attached on local port {port.port}")
+                    local_port = port
+                    break
+                sleep(0.2)
+
+        return local_port
