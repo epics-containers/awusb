@@ -198,7 +198,9 @@ class Port:
             return []
 
     @classmethod
-    def get_port_by_remote_busid(cls, remote_busid: str, server: str) -> "Port | None":
+    def get_port_by_remote_busid(
+        cls, remote_busid: str, server: str, retries=0
+    ) -> "Port | None":
         """Get a Port object by its remote busid.
 
         Args:
@@ -209,18 +211,16 @@ class Port:
             The Port of the local mount of the remote device if found, otherwise None.
             There can be only one match as port ids are unique per server.
         """
-        local_port = None
 
-        # after initiating an attach, it may take a moment for the port to appear
-        for _ in range(20):
+        # after initiating an attach, it may take a moment for the port to appear -
+        # retry a few times if not found immediately
+        for attempt in range(retries + 1):
             ports = cls.list_ports()
             for port in ports:
                 if port.remote_busid == remote_busid and port.server == server:
                     logger.info(f"Device attached on local port {port.port}")
-                    local_port = port
-                    break
-            if local_port:
-                break
-            sleep(0.2)
+                    return port
+            if attempt < retries:
+                sleep(0.2)
 
-        return local_port
+        return None
