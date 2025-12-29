@@ -87,7 +87,7 @@ def _scan_ip_range(range_spec: str) -> list[str]:
     return responsive_servers
 
 
-def _is_port_open(host: str, port: int, timeout: float = 0.1) -> bool:
+def _is_port_open(host: str, port: int, timeout: float = 0.02) -> bool:
     """
     Check if a port is open on a given host.
 
