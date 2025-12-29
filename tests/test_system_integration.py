@@ -208,7 +208,7 @@ Bus 002 Device 003: ID 0483:5740 STMicroelectronics Virtual COM Port
                         serial_number="E12345678901234",
                     )
                     # Override __class__ so type() returns usb.core.Device
-                    mock_device.__class__ = usb.core.Device
+                    mock_device.__class__ = usb.core.Device  # type: ignore
                 elif idVendor == 0x0483 and idProduct == 0x5740:
                     mock_device = MockUSBDevice(
                         bus=2,
@@ -217,7 +217,7 @@ Bus 002 Device 003: ID 0483:5740 STMicroelectronics Virtual COM Port
                         serial_number="ABC123456789",
                     )
                     # Override __class__ so type() returns usb.core.Device
-                    mock_device.__class__ = usb.core.Device
+                    mock_device.__class__ = usb.core.Device  # type: ignore
                 else:
                     mock_device = MockUSBDevice(
                         bus=bus if bus else 1,
@@ -226,7 +226,7 @@ Bus 002 Device 003: ID 0483:5740 STMicroelectronics Virtual COM Port
                         serial_number="",
                     )
                     # Override __class__ so type() returns usb.core.Device
-                    mock_device.__class__ = usb.core.Device
+                    mock_device.__class__ = usb.core.Device  # type: ignore
 
                 # Verify custom_match if provided
                 if custom_match and not custom_match(mock_device):
