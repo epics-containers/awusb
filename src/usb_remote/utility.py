@@ -33,7 +33,9 @@ def _scan_ip_range(range_spec: str) -> list[str]:
     Scan an IP range and return addresses that are listening on SERVER_PORT.
 
     Args:
-        range_spec: IP range specification like '192.168.1.30-192.168.1.40'
+        range_spec: IP range specification like '192.168.1.30-40'
+                    or '192.168.1.30-192.168.1.40'
+                    Supports shorthand: '192.168.1.30-40' (just last octet)
 
     Returns:
         List of IP addresses that are responsive on SERVER_PORT
@@ -43,9 +45,24 @@ def _scan_ip_range(range_spec: str) -> list[str]:
     try:
         # Parse the range specification
         if "-" in range_spec:
-            start_ip_str, end_ip_str = range_spec.split("-", 1)
+            start_ip_str, end_str = range_spec.split("-", 1)
             start_ip = ipaddress.ip_address(start_ip_str.strip())
-            end_ip = ipaddress.ip_address(end_ip_str.strip())
+            end_str = end_str.strip()
+
+            # Check if end is just a number (last octet) or full IP
+            if "." not in end_str and ":" not in end_str:
+                # Shorthand: just last octet specified
+                # Reconstruct full end IP by replacing last octet
+                start_parts = str(start_ip).rsplit(
+                    "." if start_ip.version == 4 else ":", 1
+                )
+                end_ip_str = (
+                    start_parts[0] + ("." if start_ip.version == 4 else ":") + end_str
+                )
+                end_ip = ipaddress.ip_address(end_ip_str)
+            else:
+                # Full IP address specified
+                end_ip = ipaddress.ip_address(end_str)
 
             logger.debug(f"Scanning IP range: {start_ip} - {end_ip}")
 
