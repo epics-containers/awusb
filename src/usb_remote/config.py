@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +22,7 @@ class UsbRemoteConfig(BaseModel):
     servers: list[str] = Field(default_factory=list)
     server_ranges: list[str] = Field(default_factory=list)
     timeout: float = Field(default=DEFAULT_TIMEOUT, gt=0)
+    model_config = ConfigDict(extra="forbid")
 
     @classmethod
     def from_file(cls, config_path: Path) -> "UsbRemoteConfig":
