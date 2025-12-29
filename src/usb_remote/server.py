@@ -16,7 +16,7 @@ from .api import (
     multiple_matches_response,
     not_found_response,
 )
-from .config import SERVER_PORT
+from .config import Defaults, Environment
 from .usbdevice import (
     DeviceNotFoundError,
     MultipleDevicesError,
@@ -34,7 +34,9 @@ class CommandServer:
         self.host = host
         # Allow server port to be overridden via environment variable
         if port is None:
-            port = int(os.environ.get("USB_REMOTE_SERVER_PORT", SERVER_PORT))
+            port = int(
+                os.environ.get(Environment.USB_REMOTE_SERVER_PORT, Defaults.SERVER_PORT)
+            )
         self.port = port
         self.server_socket = None
         self.running = False

@@ -2,6 +2,7 @@
 
 import logging
 import os
+from enum import StrEnum
 from pathlib import Path
 
 import yaml
@@ -9,11 +10,22 @@ from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CONFIG_PATH = Path.home() / ".config" / "usb-remote" / "usb-remote.config"
-SYSTEMD_CONFIG_PATH = Path("/etc/usb-remote-client/usb-remote.config")
-DEFAULT_TIMEOUT = 5.0
 
-SERVER_PORT = 5055
+class Defaults:
+    """Default configuration values."""
+
+    CLIENT_SOCKET = "/tmp/usb-remote-client.sock"
+    CONFIG_PATH = Path.home() / ".config" / "usb-remote" / "usb-remote.config"
+    SERVER_PORT = 5055
+    TIMEOUT = 2.0
+
+
+class Environment(StrEnum):
+    """Environment Variables that may override Defaults above."""
+
+    USB_REMOTE_CLIENT_SOCKET = "USB_REMOTE_CLIENT_SOCKET"
+    USB_REMOTE_CONFIG_PATH = "USB_REMOTE_CONFIG_PATH"
+    USB_REMOTE_SERVER_PORT = "USB_REMOTE_SERVER_PORT"
 
 
 class UsbRemoteConfig(BaseModel):
@@ -21,9 +33,23 @@ class UsbRemoteConfig(BaseModel):
 
     servers: list[str] = Field(default_factory=list)
     server_ranges: list[str] = Field(default_factory=list)
-    timeout: float = Field(default=DEFAULT_TIMEOUT, gt=0)
-    server_port: int = Field(default=SERVER_PORT)
+    timeout: float = Field(default=Defaults.TIMEOUT, gt=0)
+    server_port: int = Field(default=Defaults.SERVER_PORT)
     model_config = ConfigDict(extra="forbid")
+
+    def __str__(self) -> str:
+        def do_list_format(s: list[str]) -> str:
+            return "    none" if not s else "\n".join(f"    - {s}" for s in s)
+
+        return (
+            f"UsbRemoteConfig:\n"
+            f"  servers:\n"
+            f"{do_list_format(self.servers)}\n"
+            f"  server_ranges:\n"
+            f"{do_list_format(self.server_ranges)}\n"
+            f"  timeout={self.timeout}\n"
+            f"  server_port={self.server_port}"
+        )
 
     @classmethod
     def from_file(cls, config_path: Path) -> "UsbRemoteConfig":
@@ -61,7 +87,7 @@ class UsbRemoteConfig(BaseModel):
         Args:
             config_path: Path to the config file.
         """
-        config_path = discover_config_path() or DEFAULT_CONFIG_PATH
+        config_path = discover_config_path() or Defaults.CONFIG_PATH
         # Create directory if it doesn't exist
         config_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -90,30 +116,27 @@ def discover_config_path() -> Path | None:
         Path to config file if found, None otherwise.
     """
     # 1. Check environment variable
-    env_config = os.environ.get("USB_REMOTE_CONFIG")
+    env_config = os.environ.get(Environment.USB_REMOTE_CONFIG_PATH)
     if env_config:
         env_path = Path(env_config).expanduser()
         if env_path.exists():
-            logger.debug(f"Using config from USB_REMOTE_CONFIG: {env_path}")
+            logger.debug(f"Using config from USB_REMOTE_CONFIG_PATH: {env_path}")
             return env_path
         else:
-            logger.warning(f"USB_REMOTE_CONFIG points to non-existent file: {env_path}")
+            logger.warning(
+                f"USB_REMOTE_CONFIG_PATH points to non-existent file: {env_path}"
+            )
 
-    # 2. Check systemd config (when running as systemd service)
-    if os.environ.get("INVOCATION_ID") and SYSTEMD_CONFIG_PATH.exists():
-        logger.debug(f"Using systemd config: {SYSTEMD_CONFIG_PATH}")
-        return SYSTEMD_CONFIG_PATH
-
-    # 3. Check local directory
+    # 2. Check local directory
     local_config = Path.cwd() / ".usb-remote.config"
     if local_config.exists():
         logger.debug(f"Using local config: {local_config}")
         return local_config
 
     # 3. Check default location
-    if DEFAULT_CONFIG_PATH.exists():
-        logger.debug(f"Using default config: {DEFAULT_CONFIG_PATH}")
-        return DEFAULT_CONFIG_PATH
+    if Defaults.CONFIG_PATH.exists():
+        logger.debug(f"Using default config: {Defaults.CONFIG_PATH}")
+        return Defaults.CONFIG_PATH
 
     logger.debug("No config file found")
     return None

@@ -37,16 +37,19 @@ After=network.target
 [Service]
 Type=simple
 User={user}
+# TODO : Change to an appropriate group if we need access from non-root users
+# Group=root
 WorkingDirectory={working_dir}
 ExecStart={executable} -m usb_remote client-service
 Restart=on-failure
 RestartSec=5s
 RuntimeDirectory=usb-remote-client
 RuntimeDirectoryMode=0755
-# TODO : Change to an appropriate group if we need access from non-root users
-RuntimeDirectoryGroup=root
 ConfigurationDirectory=usb-remote-client
 ConfigurationDirectoryMode=0755
+Environment="USB_REMOTE_CONFIG_PATH=/etc/usb-remote-client/usb-remote.config"
+Environment="USB_REMOTE_CLIENT_SOCKET=/run/usb-remote-client/usb-remote-client.sock"
+
 
 # Security hardening
 NoNewPrivileges=true

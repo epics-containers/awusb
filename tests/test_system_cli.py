@@ -179,7 +179,7 @@ class TestSystemCLI:
         assert result.exit_code == 0, f"Command failed: {result.stdout}"
         assert "192.168.1.100" in result.stdout
         assert "server2.local" in result.stdout
-        assert "5.0s" in result.stdout
+        assert "5.0" in result.stdout
 
     def test_config_show_no_config(self, mock_subprocess_run):
         """Test config show command with no config file."""

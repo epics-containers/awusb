@@ -13,7 +13,7 @@ from . import __version__
 from .client import attach_device, detach_device, find_device, list_devices
 from .client_service import ClientService
 from .config import (
-    DEFAULT_CONFIG_PATH,
+    Defaults,
     discover_config_path,
     get_config,
     save_servers,
@@ -327,22 +327,13 @@ def config_show() -> None:
 
     if config_path is None:
         typer.echo("No configuration file found.")
-        typer.echo(f"Default location: {DEFAULT_CONFIG_PATH}")
+        typer.echo(f"Default location: {Defaults.CONFIG_PATH}")
         typer.echo("\nDefault configuration:")
     else:
         typer.echo(f"Configuration file: {config_path}")
         typer.echo()
 
-    config = get_config()
-
-    typer.echo(f"Servers ({len(config.servers)}):")
-    if config.servers:
-        for server in config.servers:
-            typer.echo(f"  - {server}")
-    else:
-        typer.echo("  (none)")
-
-    typer.echo(f"\nTimeout: {config.timeout}s")
+    typer.echo(get_config())
 
 
 @config_app.command(name="add-server")
@@ -359,7 +350,7 @@ def config_add_server(
     config.servers.append(server)
     save_servers(config.servers)
 
-    config_path = discover_config_path() or DEFAULT_CONFIG_PATH
+    config_path = discover_config_path() or Defaults.CONFIG_PATH
     typer.echo(f"Added server '{server}' to {config_path}")
 
 
@@ -398,7 +389,7 @@ def config_set_timeout(
     config.timeout = timeout
     config.to_file()
 
-    config_path = discover_config_path() or DEFAULT_CONFIG_PATH
+    config_path = discover_config_path() or Defaults.CONFIG_PATH
     typer.echo(f"Set timeout to {timeout}s in {config_path}")
 
 

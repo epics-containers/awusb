@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 
 from usb_remote.config import (
-    DEFAULT_TIMEOUT,
+    Defaults,
     UsbRemoteConfig,
     discover_config_path,
     get_config,
@@ -42,7 +42,7 @@ class TestUsbRemoteConfig:
         """Test that default values are set correctly."""
         config = UsbRemoteConfig()
         assert config.servers == []
-        assert config.timeout == DEFAULT_TIMEOUT
+        assert config.timeout == Defaults.TIMEOUT
 
     def test_custom_values(self):
         """Test setting custom values."""
@@ -76,7 +76,7 @@ class TestUsbRemoteConfig:
         config = UsbRemoteConfig.from_file(temp_config_file)
 
         assert config.servers == []
-        assert config.timeout == DEFAULT_TIMEOUT
+        assert config.timeout == Defaults.TIMEOUT
 
     def test_from_file_not_found(self, tmp_path):
         """Test loading from a non-existent file."""
@@ -84,7 +84,7 @@ class TestUsbRemoteConfig:
         config = UsbRemoteConfig.from_file(nonexistent)
 
         assert config.servers == []
-        assert config.timeout == DEFAULT_TIMEOUT
+        assert config.timeout == Defaults.TIMEOUT
 
     def test_from_file_invalid_yaml(self, temp_config_file):
         """Test loading from a file with invalid YAML."""
@@ -93,7 +93,7 @@ class TestUsbRemoteConfig:
 
         # Should return defaults on error
         assert config.servers == []
-        assert config.timeout == DEFAULT_TIMEOUT
+        assert config.timeout == Defaults.TIMEOUT
 
     def test_to_file(self, temp_config_file):
         """Test saving config to file."""
@@ -133,25 +133,25 @@ class TestDiscoverConfigPath:
     """Test config file discovery logic."""
 
     def test_environment_variable_priority(self, temp_config_file):
-        """Test that USB_REMOTE_CONFIG env var takes priority."""
+        """Test that USB_REMOTE_CONFIG_PATH env var takes priority."""
         temp_config_file.write_text("servers: []")
 
-        with patch.dict(os.environ, {"USB_REMOTE_CONFIG": str(temp_config_file)}):
+        with patch.dict(os.environ, {"USB_REMOTE_CONFIG_PATH": str(temp_config_file)}):
             result = discover_config_path()
 
         assert result == temp_config_file
 
     def test_environment_variable_nonexistent(self, tmp_path):
-        """Test that nonexistent USB_REMOTE_CONFIG is handled."""
+        """Test that nonexistent USB_REMOTE_CONFIG_PATH is handled."""
         nonexistent = tmp_path / "nonexistent.config"
 
-        with patch.dict(os.environ, {"USB_REMOTE_CONFIG": str(nonexistent)}):
+        with patch.dict(os.environ, {"USB_REMOTE_CONFIG_PATH": str(nonexistent)}):
             with patch("usb_remote.config.Path.cwd", return_value=tmp_path):
                 with patch(
-                    "usb_remote.config.DEFAULT_CONFIG_PATH", tmp_path / "default"
+                    "usb_remote.config.Defaults.CONFIG_PATH", tmp_path / "default"
                 ):
                     with patch(
-                        "usb_remote.config.SYSTEMD_CONFIG_PATH",
+                        "usb_remote.config.Defaults.CONFIG_PATH",
                         tmp_path / "systemd",
                     ):
                         result = discover_config_path()
@@ -166,10 +166,7 @@ class TestDiscoverConfigPath:
 
         with patch.dict(os.environ, {}, clear=True):
             with patch.object(Path, "cwd", return_value=tmp_path):
-                with patch(
-                    "usb_remote.config.SYSTEMD_CONFIG_PATH", tmp_path / "systemd"
-                ):
-                    result = discover_config_path()
+                result = discover_config_path()
 
         assert result == local_config
 
@@ -181,12 +178,8 @@ class TestDiscoverConfigPath:
 
         with patch.dict(os.environ, {}, clear=True):
             with patch.object(Path, "cwd", return_value=tmp_path):
-                with patch("usb_remote.config.DEFAULT_CONFIG_PATH", default_config):
-                    with patch(
-                        "usb_remote.config.SYSTEMD_CONFIG_PATH",
-                        tmp_path / "systemd",
-                    ):
-                        result = discover_config_path()
+                with patch("usb_remote.config.Defaults.CONFIG_PATH", default_config):
+                    result = discover_config_path()
 
         assert result == default_config
 
@@ -195,13 +188,9 @@ class TestDiscoverConfigPath:
         with patch.dict(os.environ, {}, clear=True):
             with patch.object(Path, "cwd", return_value=tmp_path):
                 with patch(
-                    "usb_remote.config.DEFAULT_CONFIG_PATH", tmp_path / "nonexistent"
+                    "usb_remote.config.Defaults.CONFIG_PATH", tmp_path / "nonexistent"
                 ):
-                    with patch(
-                        "usb_remote.config.SYSTEMD_CONFIG_PATH",
-                        tmp_path / "systemd",
-                    ):
-                        result = discover_config_path()
+                    result = discover_config_path()
 
         assert result is None
 
@@ -216,7 +205,7 @@ class TestGetConfig:
 
         assert isinstance(config, UsbRemoteConfig)
         assert config.servers == []
-        assert config.timeout == DEFAULT_TIMEOUT
+        assert config.timeout == Defaults.TIMEOUT
 
     def test_get_config_from_file(self, temp_config_file, sample_config_content):
         """Test getting config from a file."""
@@ -259,7 +248,7 @@ class TestGetTimeout:
         with patch("usb_remote.config.get_config", return_value=UsbRemoteConfig()):
             timeout = get_timeout()
 
-        assert timeout == DEFAULT_TIMEOUT
+        assert timeout == Defaults.TIMEOUT
 
     def test_get_timeout_custom(self):
         """Test getting custom timeout."""
