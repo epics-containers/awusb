@@ -2,6 +2,8 @@
 
 import logging
 from collections.abc import Sequence
+from enum import Enum
+from typing import Annotated
 
 import typer
 
@@ -28,6 +30,13 @@ app = typer.Typer()
 config_app = typer.Typer()
 app.add_typer(config_app, name="config", help="Manage configuration")
 logger = logging.getLogger(__name__)
+
+
+class ServiceType(str, Enum):
+    """Service type for systemd installation."""
+
+    SERVER = "server"
+    CLIENT = "client"
 
 
 def version_callback(value: bool) -> None:
@@ -270,10 +279,10 @@ def find(
 
 @app.command()
 def install_service(
-    service_type: str = typer.Argument(
-        "server",
-        help="Service type to install: 'server' or 'client'",
-    ),
+    service_type: Annotated[
+        ServiceType,
+        typer.Argument(help="Service type to install: 'server' or 'client'"),
+    ] = ServiceType.SERVER,
     user_service: bool = typer.Option(
         False,
         "--user-service",
@@ -287,16 +296,9 @@ def install_service(
     ),
 ) -> None:
     """Install usb-remote service as a systemd service (defaults to system service)."""
-    if service_type not in ["server", "client"]:
-        typer.echo(
-            f"Invalid service type '{service_type}'. Must be 'server' or 'client'.",
-            err=True,
-        )
-        raise typer.Exit(1)
-
     try:
         install_systemd_service(
-            user=user, system_wide=not user_service, service_type=service_type
+            user=user, system_wide=not user_service, service_type=service_type.value
         )
     except RuntimeError as e:
         typer.echo(f"Installation failed: {e}", err=True)
@@ -305,10 +307,10 @@ def install_service(
 
 @app.command()
 def uninstall_service(
-    service_type: str = typer.Argument(
-        "server",
-        help="Service type to uninstall: 'server' or 'client'",
-    ),
+    service_type: Annotated[
+        ServiceType,
+        typer.Argument(help="Service type to uninstall: 'server' or 'client'"),
+    ] = ServiceType.SERVER,
     user_service: bool = typer.Option(
         False,
         "--user-service",
@@ -316,16 +318,9 @@ def uninstall_service(
     ),
 ) -> None:
     """Uninstall usb-remote systemd service (defaults to system service)."""
-    if service_type not in ["server", "client"]:
-        typer.echo(
-            f"Invalid service type '{service_type}'. Must be 'server' or 'client'.",
-            err=True,
-        )
-        raise typer.Exit(1)
-
     try:
         uninstall_systemd_service(
-            system_wide=not user_service, service_type=service_type
+            system_wide=not user_service, service_type=service_type.value
         )
     except RuntimeError as e:
         typer.echo(f"Uninstallation failed: {e}", err=True)

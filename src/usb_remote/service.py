@@ -42,9 +42,11 @@ ExecStart={executable} -m usb_remote client-service
 Restart=on-failure
 RestartSec=5s
 RuntimeDirectory=usb-remote-client
+RuntimeDirectoryMode=0755
 # TODO : Change to an appropriate group if we need access from non-root users
 RuntimeDirectoryGroup=root
-RuntimeDirectoryMode=0755
+ConfigurationDirectory=usb-remote-client
+ConfigurationDirectoryMode=0755
 
 # Security hardening
 NoNewPrivileges=true
