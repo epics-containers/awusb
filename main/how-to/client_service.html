@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Client Service Setup &#8212; usb-remote 2.3.2.dev1+g1d4f68348 documentation</title>
+    <title>Client Service Setup &#8212; usb-remote 2.3.2.dev3+g30bb854d9 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=3da27447"></script>
+    <script src="../_static/documentation_options.js?v=d91e99da"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -511,14 +511,27 @@ sudo<span class="w"> </span>bash<span class="w"> </span>install.sh
 <li><p>Install the client service:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>-s<span class="w"> </span><span class="c1"># uv (installed by root) requires the root profile so use sudo -s</span>
 uvx<span class="w"> </span>usb-remote<span class="w"> </span>install-service<span class="w"> </span>--service-type<span class="w"> </span>client
-systemctl<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>--now<span class="w"> </span>usb-remote-client.service
 <span class="nb">exit</span>
 </pre></div>
 </div>
 </li>
+<li><p>Configure the client service to let it know which usb-remote servers to connect to. Create the configuration directory and file:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>/etc/usb-remote-client
+sudo<span class="w"> </span>vim<span class="w"> </span>/etc/usb-remote-client/usb-remote.config
+</pre></div>
+</div>
+<p>Add your configuration settings as needed (see <a class="reference internal" href="../reference/config.html"><span class="std std-doc">Client Configuration File</span></a> for details).</p>
+</li>
+<li><p>Enable and start the service:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>systemctl<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>--now<span class="w"> </span>usb-remote-client.service
+</pre></div>
+</div>
+</li>
 </ol>
-<p>Check service status:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>systemctl<span class="w"> </span>status<span class="w"> </span>usb-remote-client.service
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>Check<span class="w"> </span>service<span class="w"> </span>status:
+
+<span class="sb">```</span>bash
+sudo<span class="w"> </span>systemctl<span class="w"> </span>status<span class="w"> </span>usb-remote-client.service
 </pre></div>
 </div>
 <p>View service logs:</p>
