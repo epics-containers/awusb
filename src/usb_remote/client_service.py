@@ -3,13 +3,14 @@
 import logging
 import socket
 import threading
+from pathlib import Path
 from typing import Literal
 
 from pydantic import TypeAdapter, ValidationError
 
 from .client import attach_device, detach_device, find_device
 from .client_api import (
-    CLIENT_PORT,
+    CLIENT_SOCKET_PATH,
     ClientDeviceRequest,
     ClientDeviceResponse,
     ClientErrorResponse,
@@ -25,18 +26,16 @@ logger = logging.getLogger(__name__)
 
 
 class ClientService:
-    """Service that runs a socket server to accept attach/detach commands."""
+    """Service that runs a Unix socket server to accept attach/detach commands."""
 
-    def __init__(self, host: str = "127.0.0.1", port: int = CLIENT_PORT):
+    def __init__(self, socket_path: str = CLIENT_SOCKET_PATH):
         """
         Initialize the client service.
 
         Args:
-            host: Host to bind the socket server to (default: localhost only)
-            port: Port to bind the socket server to
+            socket_path: Path to Unix socket file (default: /tmp/usb-remote-client.sock)
         """
-        self.host = host
-        self.port = port
+        self.socket_path = socket_path
         self.server_socket = None
         self.running = False
 
@@ -157,19 +156,24 @@ class ClientService:
 
     def start(self):
         """Start the client service."""
-        logger.debug(f"Starting client service on {self.host}:{self.port}")
-        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.server_socket.bind((self.host, self.port))
+        # Remove existing socket file if it exists
+        socket_path = Path(self.socket_path)
+        if socket_path.exists():
+            logger.debug(f"Removing existing socket file: {self.socket_path}")
+            socket_path.unlink()
+
+        logger.debug(f"Starting client service on {self.socket_path}")
+        self.server_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.server_socket.bind(self.socket_path)
         self.server_socket.listen(5)
         self.running = True
 
-        logger.info(f"Client service listening on {self.host}:{self.port}")
+        logger.info(f"Client service listening on {self.socket_path}")
 
         while self.running:
             try:
                 client_socket, address = self.server_socket.accept()
-                logger.debug(f"Client connected from {address}")
+                logger.debug("Client connected")
                 client_thread = threading.Thread(
                     target=self.handle_client, args=(client_socket, address)
                 )
@@ -184,3 +188,12 @@ class ClientService:
         self.running = False
         if self.server_socket:
             self.server_socket.close()
+
+        # Clean up socket file
+        socket_path = Path(self.socket_path)
+        if socket_path.exists():
+            try:
+                socket_path.unlink()
+                logger.debug(f"Removed socket file: {self.socket_path}")
+            except Exception as e:
+                logger.warning(f"Failed to remove socket file: {e}")

@@ -24,8 +24,7 @@ import socket
 import sys
 
 # Configuration
-CLIENT_HOST = "127.0.0.1"
-CLIENT_PORT = 5056
+CLIENT_SOCKET_PATH = "/tmp/usb-remote-client.sock"
 
 
 def send_device_request(
@@ -70,9 +69,9 @@ def send_device_request(
     print(json.dumps(request, indent=2))
 
     try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
             sock.settimeout(10.0)
-            sock.connect((CLIENT_HOST, CLIENT_PORT))
+            sock.connect(CLIENT_SOCKET_PATH)
             sock.sendall(json.dumps(request).encode("utf-8"))
 
             response_data = sock.recv(4096).decode("utf-8")

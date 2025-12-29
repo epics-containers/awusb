@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict
 
 from .usbdevice import UsbDevice
 
-CLIENT_PORT = 5056
+CLIENT_SOCKET_PATH = "/tmp/usb-remote-client.sock"
 
 
 class StrictBaseModel(BaseModel):
