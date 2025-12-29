@@ -10,11 +10,11 @@ from pydantic import TypeAdapter, ValidationError
 
 from .client import attach_device, detach_device, find_device
 from .client_api import (
-    CLIENT_SOCKET_PATH,
     ClientDeviceRequest,
     ClientDeviceResponse,
     ClientErrorResponse,
     error_response,
+    get_client_socket_path,
     multiple_matches_response,
     not_found_response,
 )
@@ -28,15 +28,18 @@ logger = logging.getLogger(__name__)
 class ClientService:
     """Service that runs a Unix socket server to accept attach/detach commands."""
 
-    def __init__(self, socket_path: str = CLIENT_SOCKET_PATH):
+    def __init__(self, socket_path: str | None = None):
         """
         Initialize the client service.
 
         Args:
-            socket_path: Path to Unix socket file (default: /tmp/usb-remote-client.sock)
+            socket_path: Path to Unix socket file. If None,
+                        uses get_client_socket_path() which returns
+                        /run/usb-remote-client/usb-remote-client.sock for
+                        systemd services or /tmp/usb-remote-client.sock otherwise.
         """
-        self.socket_path = socket_path
-        self.server_socket = None
+        self.socket_path = socket_path or get_client_socket_path()
+        self.unix_socket = None
         self.running = False
 
     def handle_device_command(self, args: ClientDeviceRequest) -> ClientDeviceResponse:
@@ -163,16 +166,16 @@ class ClientService:
             socket_path.unlink()
 
         logger.debug(f"Starting client service on {self.socket_path}")
-        self.server_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.server_socket.bind(self.socket_path)
-        self.server_socket.listen(5)
+        self.unix_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.unix_socket.bind(self.socket_path)
+        self.unix_socket.listen(5)
         self.running = True
 
         logger.info(f"Client service listening on {self.socket_path}")
 
         while self.running:
             try:
-                client_socket, address = self.server_socket.accept()
+                client_socket, address = self.unix_socket.accept()
                 logger.debug("Client connected")
                 client_thread = threading.Thread(
                     target=self.handle_client, args=(client_socket, address)
@@ -186,8 +189,8 @@ class ClientService:
         """Stop the client service."""
         logger.info("Stopping client service")
         self.running = False
-        if self.server_socket:
-            self.server_socket.close()
+        if self.unix_socket:
+            self.unix_socket.close()
 
         # Clean up socket file
         socket_path = Path(self.socket_path)

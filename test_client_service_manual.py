@@ -24,7 +24,8 @@ import socket
 import sys
 
 # Configuration
-CLIENT_SOCKET_PATH = "/tmp/usb-remote-client.sock"
+CLIENT_SOCKET_PATH_USER = "/tmp/usb-remote-client.sock"
+CLIENT_SOCKET_PATH_SYSTEM = "/run/usb-remote-client/usb-remote-client.sock"
 
 
 def send_device_request(
@@ -35,6 +36,7 @@ def send_device_request(
     desc=None,
     first=False,
     host=None,
+    socket_path=CLIENT_SOCKET_PATH_SYSTEM,
 ):
     """
     Send an attach or detach request to the client-service.
@@ -47,6 +49,7 @@ def send_device_request(
         desc: Device description to search for
         first: Whether to attach/detach the first match
         host: Optional server host (None = use configured servers)
+        socket_path: Path to Unix socket (default: system socket)
 
     Returns:
         Response dictionary
@@ -65,13 +68,13 @@ def send_device_request(
     if host is not None:
         request["host"] = host
 
-    print(f"\nSending {command} request:")
+    print(f"\nSending {command} request to {socket_path}:")
     print(json.dumps(request, indent=2))
 
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
             sock.settimeout(10.0)
-            sock.connect(CLIENT_SOCKET_PATH)
+            sock.connect(socket_path)
             sock.sendall(json.dumps(request).encode("utf-8"))
 
             response_data = sock.recv(4096).decode("utf-8")
@@ -114,9 +117,15 @@ def main():
         action="store_true",
         help="Attach/detach the first match if multiple found",
     )
+    parser.add_argument(
+        "--user",
+        action="store_true",
+        help="Connect to user service socket (/tmp) instead of system socket (/run)",
+    )
     args = parser.parse_args()
 
     command = "detach" if args.detach else "attach"
+    socket_path = CLIENT_SOCKET_PATH_USER if args.user else CLIENT_SOCKET_PATH_SYSTEM
 
     print("=" * 60)
     print("Client-Service Manual System Test")
@@ -132,6 +141,7 @@ def main():
             desc=args.desc,
             first=args.first,
             host=args.host,
+            socket_path=socket_path,
         )
 
         if response:

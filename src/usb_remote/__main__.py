@@ -270,10 +270,14 @@ def find(
 
 @app.command()
 def install_service(
-    system: bool = typer.Option(
+    service_type: str = typer.Argument(
+        "server",
+        help="Service type to install: 'server' or 'client'",
+    ),
+    user_service: bool = typer.Option(
         False,
-        "--system",
-        help="Install as system service (requires sudo/root)",
+        "--user-service",
+        help="Install as user service instead of system service",
     ),
     user: str | None = typer.Option(
         None,
@@ -282,9 +286,18 @@ def install_service(
         help="User to run the service as (default: current user)",
     ),
 ) -> None:
-    """Install usb-remote server as a systemd service."""
+    """Install usb-remote service as a systemd service (defaults to system service)."""
+    if service_type not in ["server", "client"]:
+        typer.echo(
+            f"Invalid service type '{service_type}'. Must be 'server' or 'client'.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
     try:
-        install_systemd_service(user=user, system_wide=system)
+        install_systemd_service(
+            user=user, system_wide=not user_service, service_type=service_type
+        )
     except RuntimeError as e:
         typer.echo(f"Installation failed: {e}", err=True)
         raise typer.Exit(1) from e
@@ -292,15 +305,28 @@ def install_service(
 
 @app.command()
 def uninstall_service(
-    system: bool = typer.Option(
+    service_type: str = typer.Argument(
+        "server",
+        help="Service type to uninstall: 'server' or 'client'",
+    ),
+    user_service: bool = typer.Option(
         False,
-        "--system",
-        help="Uninstall system service (requires sudo/root)",
+        "--user-service",
+        help="Uninstall user service instead of system service",
     ),
 ) -> None:
-    """Uninstall usb-remote server systemd service."""
+    """Uninstall usb-remote systemd service (defaults to system service)."""
+    if service_type not in ["server", "client"]:
+        typer.echo(
+            f"Invalid service type '{service_type}'. Must be 'server' or 'client'.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
     try:
-        uninstall_systemd_service(system_wide=system)
+        uninstall_systemd_service(
+            system_wide=not user_service, service_type=service_type
+        )
     except RuntimeError as e:
         typer.echo(f"Uninstallation failed: {e}", err=True)
         raise typer.Exit(1) from e
