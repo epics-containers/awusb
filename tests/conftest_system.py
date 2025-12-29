@@ -16,9 +16,6 @@ from unittest.mock import patch
 
 import pytest
 
-# Unset INVOCATION_ID at module level to prevent systemd socket detection
-_original_invocation_id = os.environ.pop("INVOCATION_ID", None)
-
 
 @pytest.fixture(scope="session")
 def mock_subprocess_run():

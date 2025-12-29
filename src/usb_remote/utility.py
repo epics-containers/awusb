@@ -6,7 +6,7 @@ import re
 import socket
 import subprocess
 
-from usb_remote.config import SERVER_PORT, get_server_ranges, get_servers
+from usb_remote.config import get_server_port, get_server_ranges, get_servers
 
 logger = logging.getLogger(__name__)
 
@@ -72,11 +72,12 @@ def _scan_ip_range(range_spec: str) -> list[str]:
         for current_int in range(int(start_ip), int(end_ip) + 1):
             current_ip = ipaddress.ip_address(current_int)
             ip_str = str(current_ip)
-            if _is_port_open(ip_str, SERVER_PORT):
-                logger.info(f"Found server at {ip_str}:{SERVER_PORT}")
+            port = get_server_port()
+            if _is_port_open(ip_str, port):
+                logger.info(f"Found server at {ip_str}:{port}")
                 responsive_servers.append(ip_str)
             else:
-                logger.debug(f"No response from {ip_str}:{SERVER_PORT}")
+                logger.debug(f"No response from {ip_str}:{port}")
             current_int += 1
 
     except ValueError as e:

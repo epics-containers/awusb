@@ -45,9 +45,25 @@ For speed and ease of use, you can install the client service using the `uv` too
     ```bash
     sudo -s # uv (installed by root) requires the root profile so use sudo -s
     uvx usb-remote install-service --service-type client
-    systemctl enable --now usb-remote-client.service
     exit
     ```
+
+3. Configure the client service to let it know which usb-remote servers to connect to. Create the configuration directory and file:
+
+    ```bash
+    sudo mkdir -p /etc/usb-remote-client
+    sudo vim /etc/usb-remote-client/usb-remote.config
+    ```
+
+    Add your configuration settings as needed (see [Client Configuration File](../reference/config.md) for details).
+
+4. Enable and start the service:
+
+    ```bash
+    sudo systemctl enable --now usb-remote-client.service
+    ```
+
+```bash
 
 Check service status:
 
